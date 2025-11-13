@@ -2,18 +2,18 @@ import React from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 
-export default function LoginScreen() {
+export default function SettingsScreen() {
   const router = useRouter();
 
   // Dummy TODO
-  const handleLogin = () => {
-    router.replace("/home");
+  const handleLogout = () => {
+    router.replace("/");
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login Page</Text>
-      <Button title="Log In" onPress={handleLogin} />
+      <Text style={styles.text}>Settings</Text>
+      <Button title="Log Out" onPress={handleLogout} />
     </View>
   );
 }
@@ -24,8 +24,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  title: {
-    fontSize: 24,
+  text: {
+    fontSize: 22,
     marginBottom: 20,
   },
 });
