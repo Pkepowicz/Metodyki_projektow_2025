@@ -1,0 +1,27 @@
+# Python virtual environments (The key one we discussed)
+.venv
+venv/
+env/
+
+# Visual Studio Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# General log directories and files
+logs/
+*.log
+
+# General build output
+/build/
+/dist/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
