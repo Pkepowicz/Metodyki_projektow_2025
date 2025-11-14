@@ -7,19 +7,19 @@ export default function RootLayout() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Simulate checking login status
     const checkLogin = async () => {
       // TODO, example: await AsyncStorage.getItem("token")
       const loggedIn = false;
       setIsLoggedIn(loggedIn);
     };
     checkLogin();
-  }, []);
+  }, []);  // run once, when component mounts
 
-  useEffect(() => {
+  useEffect((): void => {
     if (isLoggedIn === null) return;
 
-    if (isLoggedIn) {  // redirect user (depending on login status)
+    // redirect user (depending on login status)
+    if (isLoggedIn) {
       router.replace("/home");
     } else {
       router.replace("/")
@@ -36,7 +36,7 @@ export default function RootLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Later TODO*/}
+      {/* Later TODO? */}
       <Slot />
     </Stack>);
 }

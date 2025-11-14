@@ -1,31 +1,21 @@
 import React from "react";
-import { View, Text, Button, StyleSheet } from "react-native";
+import { View, Text, Button } from "react-native";
 import { useRouter } from "expo-router";
+
+import {loginStyles} from "@/styles/auth"
 
 export default function LoginScreen() {
   const router = useRouter();
 
   // Dummy TODO
-  const handleLogin = () => {
+  const handleLogin = (): void => {
     router.replace("/home");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login Page</Text>
+    <View style={loginStyles.container}>
+      <Text style={loginStyles.title}>Login Page</Text>
       <Button title="Log In" onPress={handleLogin} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20,
-  },
-});
