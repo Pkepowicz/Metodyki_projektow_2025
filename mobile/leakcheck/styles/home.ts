@@ -18,7 +18,8 @@ export const homeStyles = StyleSheet.create({
     fontSize: 24,
     padding: 10,
     color: "red",
-    textAlign: "center"
+    textAlign: "center",
+    marginBottom: 30
   }
 });
 
