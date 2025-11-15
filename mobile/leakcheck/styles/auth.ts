@@ -17,5 +17,9 @@ export const loginStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2196f3",
     margin: 5
+  },
+  error: {
+    fontSize: 24,
+    color: "red"
   }
 });
