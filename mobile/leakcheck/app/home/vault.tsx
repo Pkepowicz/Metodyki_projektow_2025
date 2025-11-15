@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
 import { globalStyles } from "@/styles/global";
@@ -27,7 +28,14 @@ export default function VaultScreen() {
       setLoading(true);
       setError(null)
 
-      const response = await fetch("https://127.0.0.1:8000/vault/items");
+      const token = await AsyncStorage.getItem("token")
+      const response = await fetch("http://127.0.0.1:8000/api/v1/vault/items", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`)
       }
