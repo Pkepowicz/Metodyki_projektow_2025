@@ -1,25 +1,29 @@
 import React, {useState, useEffect} from "react";
 import { Stack, useRouter, Slot } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { globalStyles } from "@/styles/global";
+
 
 export default function RootLayout() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
+  // runs once to check for token (when component mounts)
   useEffect(() => {
-    // Simulate checking login status
     const checkLogin = async () => {
-      // TODO, example: await AsyncStorage.getItem("token")
-      const loggedIn = false;
-      setIsLoggedIn(loggedIn);
+      const token = await AsyncStorage.getItem("token")
+      setIsLoggedIn(!!token);
     };
     checkLogin();
   }, []);
 
-  useEffect(() => {
+  useEffect((): void => {
     if (isLoggedIn === null) return;
 
-    if (isLoggedIn) {  // redirect user (depending on login status)
+    // redirect user (depending on login status)
+    if (isLoggedIn) {
       router.replace("/home");
     } else {
       router.replace("/")
@@ -28,7 +32,7 @@ export default function RootLayout() {
 
   if (isLoggedIn === null) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={globalStyles.loadingView}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -36,7 +40,6 @@ export default function RootLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Later TODO*/}
       <Slot />
     </Stack>);
 }
