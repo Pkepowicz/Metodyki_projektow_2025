@@ -10,4 +10,12 @@ export const loginStyles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 20,
   },
+  input: {
+    fontSize: 22,
+    padding: 5,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: "#2196f3",
+    margin: 5
+  }
 });

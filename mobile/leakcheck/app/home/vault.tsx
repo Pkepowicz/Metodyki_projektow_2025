@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, SectionList, ActivityIndicator, Button } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 
-import { homeStyles, listStyles } from "@/styles/home";
+import { homeStyles } from "@/styles/home";
 import { globalStyles } from "@/styles/global";
+import ErrorMessage from "@/components/global";
+import PasswordsList from "@/components/vault";
 
 
 type VaultItem = {
@@ -24,19 +26,13 @@ export default function VaultScreen() {
     try {
       setLoading(true);
       setError(null)
-      /*
+
       const response = await fetch("https://127.0.0.1:8000/vault/items");
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}`)
       }
 
       const items: VaultItem[] = await response.json();
-      */
-      const items = [
-        { "encrypted_password": "FWAFR3WREFW",  "site": "site1.pl" },
-        { "encrypted_password": "GRWGREG32GW",  "site": "site1.pl" },
-        { "encrypted_password": "HRAHREE5HET",  "site": "site2.com" }
-      ]; // TODO delete and uncomment fetching
 
       // Group items by site
       const grouped = Object.values(
@@ -74,24 +70,8 @@ export default function VaultScreen() {
   return (
     <View style={homeStyles.container}>
       <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
-      
-      {error && (
-        <View style={{alignItems: "center"}}>
-          <Text style={homeStyles.error}>Error occured: {error}</Text>
-          <View style={{width: 100}}>
-            <Button title="Try Again" onPress={loadItems} />
-          </View>
-        </View>
-      )}
-      
-      <SectionList
-        sections={passwords}
-        renderItem={({item}) => <Text style={listStyles.item}>{item}</Text>}
-        renderSectionHeader={({section}) => (
-          <Text style={listStyles.sectionHeader}>{section.title}</Text>
-        )}
-        keyExtractor={(item, index) => item + index}
-      />
+      {error && <ErrorMessage error={error} retry_function={loadItems}/>}
+      <PasswordsList passwords={passwords}/>
     </View>
   );
 }
