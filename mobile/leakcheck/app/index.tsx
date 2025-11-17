@@ -39,7 +39,7 @@ export default function LoginScreen() {
 
       router.replace("/home");
     } catch (error) {
-      Alert.alert("Error occured", "Unable to log in. Skill issue (of the programmers) :(")
+      Alert.alert("Error occured", "Unable to log in. Programmers skill issue :(\n" + error)
     }
   };
 
