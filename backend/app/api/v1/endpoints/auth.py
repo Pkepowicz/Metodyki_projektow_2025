@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.db.base import get_db
 from app.db.models import User
-from app.schemas.user import UserCreate, UserLogin
+from app.schemas.user import UserCreate, UserLogin, ChangePasswordAndRotatePayload
 from app.schemas.token import Token
-from app.crud import user as crud_user
+from app.crud import user as crud_user, vault as crud_vault
 from app.core.security import verify_password, create_access_token
 from app.core.deps import get_current_user
 
@@ -60,3 +62,48 @@ def login_for_access_token(user: UserLogin, db: Session = Depends(get_db)):
 
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password_and_rotate(payload: ChangePasswordAndRotatePayload, db: Session = Depends(get_db),
+                               current_user: User = Depends(get_current_user)) -> Response:
+    """
+    Atomically change the user's master password and rotate all vault items.
+
+    The client's current AuthHash is verified against the stored FinalHash
+    (hashed_auth_hash). If validation succeeds, the server updates the stored
+    FinalHash, protected vault key, the encrypted_password, and site for
+    the provided vault items that belong to the authenticated user.
+
+    Args:
+        payload (ChangePasswordAndRotatePayload): Payload containing the current
+            AuthHash, new AuthHash, new protected vault key (and IV), and a list
+            of re-encrypted vault items.
+        db (Session): SQLAlchemy database session provided by dependency injection.
+        current_user (User): The authenticated user, resolved from the JWT access
+            token by the get_current_user dependency.
+
+    Raises:
+        HTTPException: With Status 401 if authentication via JWT fails.
+        HTTPException: With Status 403 if the current AuthHash is incorrect or
+            if any provided vault item is not owned by the authenticated user.
+        HTTPException: With status 500 if a database error occurs while updating
+            the user or vault items - the transaction is rolled back.
+    """
+    if not verify_password(payload.current_auth_hash, current_user.hashed_auth_hash):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Current password is incorrect')
+
+    for item in payload.items:
+        if item.owner_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f'Vault item {item.id} does not belong to the authenticated user')
+
+    try:
+        crud_user.update_user_auth(db=db, user=current_user, new_auth_hash=payload.new_auth_hash,
+                                   new_protected_vault_key=payload.new_protected_vault_key,
+                                   new_protected_vault_key_iv=payload.new_protected_vault_key_iv)
+        crud_vault.bulk_rotate_vault_items_inplace(db=db, owner_id=current_user.id,rotated_items=payload.items)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Failed to change password and rotate vault items') from exc
