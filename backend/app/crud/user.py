@@ -23,3 +23,14 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
 
     return db_user
+
+def update_user_auth(db: Session, user: models.User, new_auth_hash: str, new_protected_vault_key: str,
+                     new_protected_vault_key_iv: str) -> None:
+    """
+    Update the user's hashed password and associated encrypted vault key
+    IMPORTANT: This function does NOT commit. Caller must commit/rollback.
+    """
+    user.hashed_auth_hash = get_password_hash(new_auth_hash)
+    user.protected_vault_key = new_protected_vault_key
+    user.protected_vault_key_iv = new_protected_vault_key_iv
+    db.add(user)
