@@ -67,7 +67,7 @@ def login_for_access_token(user: UserLogin, db: Session = Depends(get_db)):
 def change_password_and_rotate(payload: ChangePasswordAndRotatePayload, db: Session = Depends(get_db),
                                current_user: User = Depends(get_current_user)) -> Response:
     """
-    Atomically change the user's master password and rotate all vault items.
+    Atomically change the user's current hashed password and rotate all vault items.
 
     The client's current AuthHash is verified against the stored FinalHash
     (hashed_auth_hash). If validation succeeds, the server updates the stored
