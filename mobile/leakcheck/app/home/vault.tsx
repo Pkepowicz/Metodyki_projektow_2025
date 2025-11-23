@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Modal, Button } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
 import { globalStyles } from "@/styles/global";
 import ErrorMessage from "@/components/global";
-import PasswordsList from "@/components/vault";
+import { PasswordsList, AddPasswordModal } from "@/components/vault";
 
 
 export type VaultItem = {
@@ -23,6 +23,10 @@ export default function VaultScreen() {
   const [passwords, setPasswords] = useState<Section[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newSite, setNewSite] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function loadItems() {
     try {
@@ -41,9 +45,14 @@ export default function VaultScreen() {
         throw new Error(`Server returned ${response.status}`)
       }
 
-      const items: VaultItem[] = await response.json();
+      // const items: VaultItem[] = await response.json();
 
       // TODO: decrypt passwords
+      const items = [
+        {"encrypted_password": "FWAFR3WREFW", "user": "usertemp", "site": "site1.pl"},
+        {"encrypted_password": "GRWGREG32GW", "user": "usertemp2", "site": "site1.pl"},
+        {"encrypted_password": "HRAHREE5HET", "user": "usertemp", "site": "site2.com"}
+      ]
 
       // Group items by site
       const grouped: Section[] = Object.values(
@@ -80,9 +89,22 @@ export default function VaultScreen() {
 
   return (
     <View style={homeStyles.container}>
-      <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
-      {error && <ErrorMessage error={error} retry_function={loadItems}/>}
-      <PasswordsList passwords={passwords}/>
+      {error ?(
+        <ErrorMessage error={error} retry_function={loadItems}/>
+      ) : (
+        <View>
+          <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
+          <Button title="Add Password" onPress={() => setModalVisible(true)} />
+          <PasswordsList passwords={passwords}/>
+          <AddPasswordModal
+            loadItems={loadItems}
+            modalVisible={modalVisible} setModalVisible={setModalVisible}
+            newSite={newSite} setNewSite={setNewSite}
+            newPassword={newPassword} setNewPassword={setNewPassword}
+            submitting={submitting} setSubmitting={setSubmitting}
+          />
+        </View>
+      )}
     </View>
   );
 }
