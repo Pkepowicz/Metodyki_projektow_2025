@@ -45,14 +45,9 @@ export default function VaultScreen() {
         throw new Error(`Server returned ${response.status}`)
       }
 
-      // const items: VaultItem[] = await response.json();
+      const items: VaultItem[] = await response.json();
 
       // TODO: decrypt passwords
-      const items = [
-        {"encrypted_password": "FWAFR3WREFW", "user": "usertemp", "site": "site1.pl"},
-        {"encrypted_password": "GRWGREG32GW", "user": "usertemp2", "site": "site1.pl"},
-        {"encrypted_password": "HRAHREE5HET", "user": "usertemp", "site": "site2.com"}
-      ]
 
       // Group items by site
       const grouped: Section[] = Object.values(
