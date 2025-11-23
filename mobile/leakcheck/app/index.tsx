@@ -18,7 +18,7 @@ export default function LoginScreen() {
       // replace by hashing TODO
       const auth_hash = password;
 
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const response = await fetch("https://leakchecker.mwalas.pl/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

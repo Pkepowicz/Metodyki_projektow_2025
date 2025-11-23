@@ -8,7 +8,7 @@ import ErrorMessage from "@/components/global";
 import PasswordsList from "@/components/vault";
 
 
-export type PasswordItem = {
+export type VaultItem = {
   encrypted_password: string
   user: string
   site: string
@@ -16,7 +16,7 @@ export type PasswordItem = {
 
 export type Section = {
   title: string
-  data: PasswordItem[]
+  data: VaultItem[]
 }
 
 export default function VaultScreen() {
@@ -29,24 +29,19 @@ export default function VaultScreen() {
       setLoading(true);
       setError(null)
 
-      const token = await AsyncStorage.getItem("token")
-      // const response = await fetch("http://127.0.0.1:8000/api/v1/vault/items", {
-      //   method: "GET",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     "Authorization": `Bearer ${token}`
-      //   }
-      // });
-      // if (!response.ok) {
-      //   throw new Error(`Server returned ${response.status}`)
-      // }
+      const token = await AsyncStorage.getItem("token");
+      const response = await fetch("https://leakchecker.mwalas.pl/api/v1/vault/items", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`)
+      }
 
-      // const items: VaultItem[] = await response.json();
-      const items = [
-        {"encrypted_password": "FWAFR3WREFW", "user": "usertemp", "site": "site1.pl"},
-        {"encrypted_password": "GRWGREG32GW", "user": "usertemp2", "site": "site1.pl"},
-        {"encrypted_password": "HRAHREE5HET", "user": "usertemp", "site": "site2.com"}
-      ]
+      const items: VaultItem[] = await response.json();
 
       // TODO: decrypt passwords
 
