@@ -5,7 +5,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import LoginScreenComponent from "@/components/auth";
 
-
 export default function LoginScreen() {
   const router = useRouter();
 
@@ -18,14 +17,17 @@ export default function LoginScreen() {
       // replace by hashing TODO
       const auth_hash = password;
 
-      const response = await fetch("https://leakchecker.mwalas.pl/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          auth_hash,
-        }),
-      })
+      const response = await fetch(
+        "https://leakchecker.mwalas.pl/api/v1/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            auth_hash,
+          }),
+        }
+      );
       if (!response.ok) {
         const error = await response.json();
         setErrorMessage(error.message || "Invalid credentials");
@@ -39,15 +41,21 @@ export default function LoginScreen() {
 
       router.replace("/home");
     } catch (error) {
-      Alert.alert("Error occured", "Unable to log in. Programmers skill issue :(\n" + error)
+      Alert.alert(
+        "Error occured",
+        "Unable to log in. Programmers skill issue :(\n" + error
+      );
     }
   };
 
   return (
     <LoginScreenComponent
       handle_login={handleLogin}
-      email={email} set_email={setEmail}
-      password={password} set_password={setPassword}
-      error_message = {errorMessage}/>
+      email={email}
+      set_email={setEmail}
+      password={password}
+      set_password={setPassword}
+      error_message={errorMessage}
+    />
   );
 }

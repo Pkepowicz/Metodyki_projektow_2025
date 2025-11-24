@@ -13,19 +13,19 @@ export async function deriveKey(masterPassword: string): Promise<string> {
 
 export async function encrypt(text: string): Promise<string> {
   const masterKey = await getMasterKey();
-  if (!masterKey) throw Error('Master key not set');
+  if (!masterKey) throw Error("Master key not set");
   return CryptoJS.AES.encrypt(text, masterKey).toString();
 }
 
 export async function decrypt(ciphertext: string) {
   const masterKey = await getMasterKey();
-  if (!masterKey) throw Error('Master key not set');
+  if (!masterKey) throw Error("Master key not set");
   const bytes = CryptoJS.AES.decrypt(ciphertext, masterKey);
   return bytes.toString(CryptoJS.enc.Utf8);
 }
 
 export async function getMasterKey() {
-  return Platform.OS === "web" ?
-        await AsyncStorage.getItem("master_key") :
-        await SecureStore.getItemAsync("master_key");
+  return Platform.OS === "web"
+    ? await AsyncStorage.getItem("master_key")
+    : await SecureStore.getItemAsync("master_key");
 }
