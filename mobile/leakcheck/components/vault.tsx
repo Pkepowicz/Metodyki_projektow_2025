@@ -65,12 +65,19 @@ export function PasswordsList({passwords, setEditItem, setDeleteItem}:
                 setOpen(prev => ({ ...prev, [section.title]: !isOpen }))
               }
             >
-              <Text style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                marginTop: 20,
-                marginLeft: 12
-              }}>
+              <Text style={[
+                  {
+                    fontSize: 20,
+                    fontWeight: "bold",
+                    marginTop: 20,
+                    marginLeft: 12,
+                    padding: 5
+                  },
+                  isOpen && {
+                    backgroundColor: "white",
+                    borderRadius: 5
+                   }
+                ]}>
                 {section.title} {isOpen ? "▲" : "▼"}
               </Text>
             </Pressable>

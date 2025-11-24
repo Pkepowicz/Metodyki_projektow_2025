@@ -50,8 +50,6 @@ export default function VaultScreen() {
 
       const items: VaultItem[] = await response.json();
 
-      // TODO: decrypt passwords
-
       // Group items by site
       const grouped: Section[] = Object.values(
       items.reduce<Record<string, Section>>((acc, item) => {
