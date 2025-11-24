@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, Modal, Button } from "react-native";
+import { View, Text, ActivityIndicator, Button, TextInput } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
 import { globalStyles } from "@/styles/global";
 import ErrorMessage from "@/components/global";
-import { PasswordsList, AddPasswordModal } from "@/components/vault";
+import { PasswordsList, AddPasswordModal, EditPasswordModal, DeleteConfirmModal } from "@/components/vault";
 
 
 export type VaultItem = {
@@ -27,6 +27,9 @@ export default function VaultScreen() {
   const [newSite, setNewSite] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [editItem, setEditItem] = useState<VaultItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<VaultItem | null>(null);
 
   async function loadItems() {
     try {
@@ -82,15 +85,53 @@ export default function VaultScreen() {
     );
   }
 
+  async function saveEdit(oldItem: VaultItem, newUser: string, newPassword: string) {
+    // TODO: call API PUT here
+    console.log("update", oldItem, newUser, newPassword);
+
+    setEditItem(null);
+    loadItems();
+  }
+
+  async function confirmDelete(item: VaultItem) {
+    // TODO: call API DELETE here
+    console.log("delete", item);
+
+    setDeleteItem(null);
+    loadItems();
+  }
+
   return (
     <View style={homeStyles.container}>
-      {error ?(
+      {error ? (
         <ErrorMessage error={error} retry_function={loadItems}/>
       ) : (
         <View>
           <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
+          
           <Button title="Add Password" onPress={() => setModalVisible(true)} />
-          <PasswordsList passwords={passwords}/>
+
+          <TextInput
+            placeholder="Search domains…"
+            value={search}
+            onChangeText={setSearch}
+            style={{
+              marginTop: 50,
+              marginBottom: 10,
+              marginHorizontal: 12,
+              backgroundColor: "#f6faffff",
+              padding: 10,
+              borderRadius: 3,
+              borderWidth: 1,
+            }}
+          />
+          <PasswordsList
+            setEditItem={setEditItem}
+            setDeleteItem={setDeleteItem}
+            passwords={passwords.filter(p =>
+              p.title.toLowerCase().includes(search.toLowerCase())
+            )}
+          />
           <AddPasswordModal
             loadItems={loadItems}
             modalVisible={modalVisible} setModalVisible={setModalVisible}
@@ -98,6 +139,21 @@ export default function VaultScreen() {
             newPassword={newPassword} setNewPassword={setNewPassword}
             submitting={submitting} setSubmitting={setSubmitting}
           />
+          {editItem && (
+            <EditPasswordModal
+              item={editItem}
+              onClose={() => setEditItem(null)}
+              onSave={saveEdit}
+            />
+          )}
+
+          {deleteItem && (
+            <DeleteConfirmModal
+              item={deleteItem}
+              onCancel={() => setDeleteItem(null)}
+              onConfirm={confirmDelete}
+            />
+          )}
         </View>
       )}
     </View>

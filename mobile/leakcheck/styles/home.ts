@@ -8,7 +8,7 @@ export const homeStyles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    marginBottom: 30,
+    marginBottom: 50,
     marginTop: 30
   },
   text: {

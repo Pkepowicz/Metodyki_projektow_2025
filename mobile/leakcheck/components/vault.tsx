@@ -1,11 +1,31 @@
-import { View, Text, ScrollView, Modal, TextInput, Button, Pressable } from "react-native";
+import { View, Text, ScrollView, Modal, TextInput, Button, Pressable, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
+import * as SecureStore from 'expo-secure-store';
 
 import { VaultItem, Section } from "@/app/home/vault"
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useState } from "react";
+import { decrypt, encrypt } from '@/utils/encryption'
 
 
-function PasswordCard({item}: {item: VaultItem}) {
+function PasswordCard({item, onEdit, onDelete}:
+  {item: VaultItem, onEdit: () => void, onDelete: () => void}) {
+
+  const [passwordDecrypted, setPasswordDecrypted] = useState<string>("Decrypting...");
+
+  useEffect(() => {
+    (async () => {
+      const masterKey =
+        Platform.OS === "web" ?
+          await AsyncStorage.getItem("master_key") :
+          await SecureStore.getItemAsync("master_key");
+
+      if (!masterKey) return;
+
+      const passwordDecrypted = decrypt(item.encrypted_password, masterKey);
+      setPasswordDecrypted(passwordDecrypted);
+    })();
+  }, [item.encrypted_password]);
+
   return (
     <View style={{
       backgroundColor: '#fff',
@@ -14,25 +34,33 @@ function PasswordCard({item}: {item: VaultItem}) {
       marginHorizontal: 12,
       borderRadius: 12,
       elevation: 3,
-      shadowColor: '#000',
+      alignItems: 'center',
+      shadowColor: '#000000ff',
       shadowOpacity: 0.1,
       shadowOffset: {width: 0, height: 2},
       shadowRadius: 6
     }}>
-      <Text style={{fontSize: 16, fontWeight: 'bold'}}>
+      <Text style={{fontSize: 18, fontWeight: 'bold'}}>
         {item.user}
       </Text>
 
-      <Text style={{fontSize: 14, marginTop: 4}}>
-        {item.encrypted_password}
+      <Text style={{fontSize: 18, marginTop: 4}}>
+        {passwordDecrypted}
       </Text>
+
+      <View style={{ flexDirection: "row", marginTop: 10, gap: 50 }}>
+        <Button title="Edit" onPress={onEdit} />
+        <Button title="Delete" color="#8e57b0ff" onPress={onDelete} />
+      </View>
     </View>
   )
 }
 
-export function PasswordsList({passwords}: {passwords: Section[]}) {
+export function PasswordsList({passwords, setEditItem, setDeleteItem}:
+  {passwords: Section[], setEditItem: (vault_item: VaultItem) => void, setDeleteItem: (vault_item: VaultItem) => void}) {
+
   const [open, setOpen] = useState<Record<string, boolean>>({});
-  
+
   return (
     <ScrollView>
       {passwords.map(section => {
@@ -40,7 +68,6 @@ export function PasswordsList({passwords}: {passwords: Section[]}) {
 
         return (
           <View key={section.title}>
-            {/* Clickable domain header */}
             <Pressable
               onPress={() =>
                 setOpen(prev => ({ ...prev, [section.title]: !isOpen }))
@@ -58,7 +85,11 @@ export function PasswordsList({passwords}: {passwords: Section[]}) {
 
             {isOpen &&
               section.data.map((item, index) => (
-                <PasswordCard key={index} item={item} />
+                <PasswordCard
+                  key={index} item={item}
+                  onEdit={() => setEditItem(item)}
+                  onDelete={() => setDeleteItem(item)}
+                />
               ))
             }
           </View>
@@ -84,32 +115,40 @@ export function AddPasswordModal({
     loadItems, modalVisible, setModalVisible, newSite, setNewSite,
     newPassword, setNewPassword, submitting, setSubmitting}: AddPasswordModalProps) {
 
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
   async function addItem() {
     try {
       setSubmitting(true);
 
       const token = await AsyncStorage.getItem("token");
+      const masterKey = await AsyncStorage.getItem("master_key");
+      if (!masterKey) {
+        setErrorMessage("Master key not set. Go to settings")
+      } else {
+        const encryptedPassword = encrypt(newPassword, masterKey);
 
-      const response = await fetch("https://leakchecker.mwalas.pl/api/v1/vault/items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          site: newSite,
-          encrypted_password: newPassword // later substitute encryption
-        })
-      });
+        const response = await fetch("https://leakchecker.mwalas.pl/api/v1/vault/items", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            site: newSite,
+            encrypted_password: encryptedPassword // later substitute encryption
+          })
+        });
 
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        // Close modal + reset form
+        setNewSite("");
+        setNewPassword("");
+        setModalVisible(false);
       }
-
-      // Close modal + reset form
-      setNewSite("");
-      setNewPassword("");
-      setModalVisible(false);
 
       // Reload list
       await loadItems();
@@ -142,6 +181,8 @@ export function AddPasswordModal({
         }}>
 
           <Text style={{ fontSize: 18, marginBottom: 10 }}>Add Vault Item</Text>
+
+          {errorMessage && <Text>errorMessage</Text>}
 
           <TextInput
             placeholder="Site (example.com)"
@@ -179,4 +220,65 @@ export function AddPasswordModal({
       </View>
     </Modal>
   )
+}
+
+export function EditPasswordModal({ item, onClose, onSave }:
+  {item: VaultItem, onClose: () => void, onSave: (oldItem: VaultItem, newUser: string, newPassword: string) => void}
+) {
+  const [user, setUser] = useState(item.user);
+  const [password, setPassword] = useState(item.encrypted_password);
+
+  return (
+    <Modal visible={true} transparent>
+      <View style={{
+        flex:1, justifyContent:"center", alignItems:"center",
+        backgroundColor:"rgba(0,0,0,0.5)"
+      }}>
+        <View style={{ backgroundColor:"white", padding:20, borderRadius:10, width:"80%" }}>
+          
+          <Text>Edit entry</Text>
+
+          <TextInput
+            value={user}
+            onChangeText={setUser}
+            style={{ borderWidth:1, padding:8, marginTop:10 }}
+          />
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            style={{ borderWidth:1, padding:8, marginTop:10 }}
+          />
+
+          <View style={{ flexDirection: "row", marginTop: 30, justifyContent: 'space-evenly' }}>
+            <Button title="Save" onPress={() => onSave(item, user, password)} />
+            <Button title="Cancel" color="red" onPress={onClose} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export function DeleteConfirmModal({ item, onCancel, onConfirm }:
+  {item: VaultItem, onCancel: () => void, onConfirm: (item: VaultItem) => void}
+) {
+  return (
+    <Modal visible={true} transparent>
+      <View style={{
+        flex:1, justifyContent:"center", alignItems:"center",
+        backgroundColor:"rgba(0,0,0,0.5)"
+      }}>
+        <View style={{ backgroundColor:"white", padding:20, borderRadius:10, width:"80%", alignItems:'center' }}>
+          <Text>Delete this entry?</Text>
+
+          <Text style={{ marginVertical:10 }}>{item.site} {item.user}</Text>
+
+          <View style={{ flexDirection: "row", gap: 40 }}>
+            <Button title="Delete" color="#8e57b0ff" onPress={() => onConfirm(item)} />
+            <Button title="Cancel" onPress={onCancel} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 }
