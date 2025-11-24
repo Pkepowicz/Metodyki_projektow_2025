@@ -1,7 +1,6 @@
-import { View, Text, ScrollView, Modal, TextInput, Button, Pressable, Platform } from "react-native";
+import { View, Text, Modal, TextInput, Button, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import * as SecureStore from 'expo-secure-store';
 
 import { VaultItem, Section } from "@/app/home/vault"
 import { decrypt, encrypt } from '@/utils/encryption'
@@ -14,14 +13,7 @@ function PasswordCard({item, onEdit, onDelete}:
 
   useEffect(() => {
     (async () => {
-      const masterKey =
-        Platform.OS === "web" ?
-          await AsyncStorage.getItem("master_key") :
-          await SecureStore.getItemAsync("master_key");
-
-      if (!masterKey) return;
-
-      const passwordDecrypted = decrypt(item.encrypted_password, masterKey);
+      const passwordDecrypted = await decrypt(item.encrypted_password);
       setPasswordDecrypted(passwordDecrypted);
     })();
   }, [item.encrypted_password]);
@@ -62,7 +54,7 @@ export function PasswordsList({passwords, setEditItem, setDeleteItem}:
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   return (
-    <ScrollView>
+    <View>
       {passwords.map(section => {
         const isOpen = open[section.title];
 
@@ -95,7 +87,7 @@ export function PasswordsList({passwords, setEditItem, setDeleteItem}:
           </View>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -122,11 +114,12 @@ export function AddPasswordModal({
       setSubmitting(true);
 
       const token = await AsyncStorage.getItem("token");
+      
       const masterKey = await AsyncStorage.getItem("master_key");
       if (!masterKey) {
         setErrorMessage("Master key not set. Go to settings")
       } else {
-        const encryptedPassword = encrypt(newPassword, masterKey);
+        const encryptedPassword = await encrypt(newPassword);
 
         const response = await fetch("https://leakchecker.mwalas.pl/api/v1/vault/items", {
           method: "POST",
@@ -226,7 +219,14 @@ export function EditPasswordModal({ item, onClose, onSave }:
   {item: VaultItem, onClose: () => void, onSave: (oldItem: VaultItem, newUser: string, newPassword: string) => void}
 ) {
   const [user, setUser] = useState(item.user);
-  const [password, setPassword] = useState(item.encrypted_password);
+  const [passwordDecrypted, setPasswordDecrypted] = useState('Decrypting...');
+
+  useEffect(() => {
+    (async () => {
+      const passwordDecrypted = await decrypt(item.encrypted_password);
+      setPasswordDecrypted(passwordDecrypted);
+    })();
+  }, [item.encrypted_password]);
 
   return (
     <Modal visible={true} transparent>
@@ -244,13 +244,13 @@ export function EditPasswordModal({ item, onClose, onSave }:
             style={{ borderWidth:1, padding:8, marginTop:10 }}
           />
           <TextInput
-            value={password}
-            onChangeText={setPassword}
+            value={passwordDecrypted}
+            onChangeText={setPasswordDecrypted}
             style={{ borderWidth:1, padding:8, marginTop:10 }}
           />
 
           <View style={{ flexDirection: "row", marginTop: 30, justifyContent: 'space-evenly' }}>
-            <Button title="Save" onPress={() => onSave(item, user, password)} />
+            <Button title="Save" onPress={() => onSave(item, user, passwordDecrypted)} />
             <Button title="Cancel" color="red" onPress={onClose} />
           </View>
         </View>

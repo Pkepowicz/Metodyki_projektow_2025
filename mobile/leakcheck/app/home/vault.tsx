@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, Button, TextInput } from "react-native";
+import { View, Text, ActivityIndicator, Button, TextInput, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
@@ -106,7 +106,7 @@ export default function VaultScreen() {
       {error ? (
         <ErrorMessage error={error} retry_function={loadItems}/>
       ) : (
-        <View>
+        <ScrollView>
           <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
           
           <Button title="Add Password" onPress={() => setModalVisible(true)} />
@@ -125,6 +125,8 @@ export default function VaultScreen() {
               borderWidth: 1,
             }}
           />
+          
+          {/* ScrollView could only wrap the PasswordsList, but doesn't work on web.*/}
           <PasswordsList
             setEditItem={setEditItem}
             setDeleteItem={setDeleteItem}
@@ -132,6 +134,7 @@ export default function VaultScreen() {
               p.title.toLowerCase().includes(search.toLowerCase())
             )}
           />
+          
           <AddPasswordModal
             loadItems={loadItems}
             modalVisible={modalVisible} setModalVisible={setModalVisible}
@@ -154,7 +157,7 @@ export default function VaultScreen() {
               onConfirm={confirmDelete}
             />
           )}
-        </View>
+        </ScrollView>
       )}
     </View>
   );

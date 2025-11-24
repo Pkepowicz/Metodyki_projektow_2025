@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Button, TextInput, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import SecureStore from "expo-secure-store";
+import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
-import {deriveKey} from "@/utils/encryption"
+import {deriveKey, getMasterKey} from "@/utils/encryption"
 
 
 export default function SettingsScreen() {
@@ -15,13 +15,8 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     (async () => {
-      if (Platform.OS === 'web') {
-        const key = await AsyncStorage.getItem("master_key");
-        if (key) setSavedKeyExists(true);
-      } else {
-        const key = await SecureStore.getItemAsync("master_key");
-        if (key) setSavedKeyExists(true);
-      }
+      const key = await getMasterKey();
+      if (key) setSavedKeyExists(true);
     })();
   }, []);
 
