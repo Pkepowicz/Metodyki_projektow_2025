@@ -1,5 +1,5 @@
 """
-Simple test client for your FastAPI backend.
+Simple test client for FastAPI backend.
 
 Supports:
     - user registration
@@ -8,13 +8,13 @@ Supports:
     - password change with vault rotation
 
 Usage examples:
-    python test_client.py register
-    python test_client.py login
-    python test_client.py both (register and login)
-    python test_client.py vault-post
-    python test_client.py vault-get
-    python test_client.py vault-both
-    python test_client.py change-password --new-password "NewPass123!"
+    python test.py register
+    python test.py login
+    python test.py both (register and login)
+    python test.py vault-post
+    python test.py vault-get
+    python test.py vault-both
+    python test.py change-password --new-password "NewPass123!"
 """
 
 import argparse
@@ -34,7 +34,7 @@ def derive_auth_hash(master_password: str) -> str:
     """
     Client-side derivation of AuthHash.
 
-    In your real client, this will be PBKDF2/Argon2, Bitwarden-style.
+    In real client, this will be PBKDF2/Argon2, Bitwarden-style.
     For testing, we just do a deterministic SHA-256 so:
         - the same master_password -> same auth_hash
         - register and login will match
