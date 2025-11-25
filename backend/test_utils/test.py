@@ -1,29 +1,27 @@
 """
-Simple test client for your FastAPI auth backend.
+Simple test client for FastAPI backend.
 
 Supports:
     - user registration
     - user login
-
-It sends exactly what your backend expects based on:
-
-    def create_user(db: Session, user: UserCreate):
-        # UserCreate:
-        #   email: EmailStr
-        #   auth_hash: str
-        #   protected_vault_key: str
-        #   protected_vault_key_iv: str
+    - vault operations (POST/GET)
+    - password change with vault rotation
 
 Usage examples:
-    python test_client.py register
-    python test_client.py login
-    python test_client.py both
+    python test.py register
+    python test.py login
+    python test.py both (register and login)
+    python test.py vault-post
+    python test.py vault-get
+    python test.py vault-both
+    python test.py change-password --new-password "NewPass123!"
 """
 
 import argparse
 import base64
 import hashlib
 import secrets
+from typing import Optional
 
 import requests
 
@@ -36,7 +34,7 @@ def derive_auth_hash(master_password: str) -> str:
     """
     Client-side derivation of AuthHash.
 
-    In your real client, this will be PBKDF2/Argon2, Bitwarden-style.
+    In real client, this will be PBKDF2/Argon2, Bitwarden-style.
     For testing, we just do a deterministic SHA-256 so:
         - the same master_password -> same auth_hash
         - register and login will match
@@ -63,6 +61,13 @@ def generate_fake_iv() -> str:
     return base64.b64encode(secrets.token_bytes(16)).decode("ascii")
 
 
+def generate_fake_ciphertext() -> str:
+    """
+    Generate a dummy ciphertext string for vault item passwords.
+    """
+    return base64.b64encode(secrets.token_bytes(24)).decode("ascii")
+
+
 def register(session: requests.Session, register_url: str, email: str, master_password: str) -> None:
     auth_hash = derive_auth_hash(master_password)
     protected_vault_key = generate_fake_protected_vault_key()
@@ -87,7 +92,7 @@ def register(session: requests.Session, register_url: str, email: str, master_pa
             print("[+] No response body.")
 
 
-def login(session: requests.Session, login_url: str, email: str, master_password: str) -> None:
+def login( session: requests.Session, login_url: str, email: str, master_password: str) -> Optional[str]:
     auth_hash = derive_auth_hash(master_password)
 
     payload = {
@@ -98,7 +103,6 @@ def login(session: requests.Session, login_url: str, email: str, master_password
     print(f"\n[*] Logging in user {email} …")
     resp = session.post(login_url, json=payload)
     print(f"[+] Status: {resp.status_code}")
-    # Try to print JSON if there is any (JWT or nothing, depending on your current code)
     token = None
     try:
         data = resp.json()
@@ -110,19 +114,11 @@ def login(session: requests.Session, login_url: str, email: str, master_password
         else:
             print("[+] No response body.")
 
-    # If we received a JWT access token, set Authorization header for the session
     if token:
         session.headers.update({"Authorization": f"Bearer {token}"})
         print("[+] Authorization header set on session.")
         return token
 
-    # Show cookies (useful if/when you switch to session-based auth)
-    if session.cookies:
-        print("[+] Cookies stored in session:")
-        for cookie in session.cookies:
-            print(f"    {cookie.name}={cookie.value}")
-    else:
-        print("[+] No cookies stored in session.")
     return None
 
 
@@ -138,12 +134,12 @@ def test_vault(session: requests.Session, base_url: str, do_post: bool = True, d
     post_url = f"{base_url}/vault/items"
     get_url = f"{base_url}/vault/items"
 
-    items_to_create = [
-        {"encrypted_password": "FWAFR3WREFW", "site": "site1.pl"},
-        {"encrypted_password": "HRAHREE5HET", "site": "site2.com"},
-    ]
-
     if do_post:
+        items_to_create = [
+            {"encrypted_password": generate_fake_ciphertext(), "site": "site1.pl"},
+            {"encrypted_password": generate_fake_ciphertext(), "site": "site2.com"},
+        ]
+
         print("\n[*] Creating vault items …")
         for item in items_to_create:
             resp = session.post(post_url, json=item)
@@ -166,12 +162,68 @@ def test_vault(session: requests.Session, base_url: str, do_post: bool = True, d
             print("[+] No JSON response on GET")
 
 
+def change_password_and_rotate(session: requests.Session,change_url: str,vault_get_url: str,
+                               current_password: str, new_password: str) -> None:
+    """
+    Test helper: performs change-password + vault rotation flow:
+
+    1. Assumes the session already has Authorization header set (login done).
+    2. Fetches existing vault items.
+    3. Builds a rotation payload:
+        - current_auth_hash
+        - new_auth_hash
+        - new protected vault key + IV
+        - items: same ids/owner_ids/sites, new ciphertexts
+    4. Calls POST /auth/change-password.
+    """
+    print("\n[*] Fetching existing vault items for rotation …")
+    resp = session.get(vault_get_url)
+    print(f"[+] GET {vault_get_url} -> {resp.status_code}")
+    try:
+        items = resp.json()
+    except Exception:
+        print("[!] Could not parse vault items JSON; aborting rotation.")
+        return
+
+    print(f"[+] Retrieved {len(items)} vault items")
+
+    rotated_items = []
+    for item in items:
+        rotated_items.append(
+            {
+                "id": item["id"],
+                "owner_id": item["owner_id"],
+                "site": item["site"],
+                "encrypted_password": generate_fake_ciphertext(),
+            }
+        )
+
+    payload = {
+        "current_auth_hash": derive_auth_hash(current_password),
+        "new_auth_hash": derive_auth_hash(new_password),
+        "new_protected_vault_key": generate_fake_protected_vault_key(),
+        "new_protected_vault_key_iv": generate_fake_iv(),
+        "items": rotated_items,
+    }
+
+    print("\n[*] Calling /auth/change-password with rotation payload …")
+    resp = session.post(change_url, json=payload)
+    print(f"[+] POST {change_url} -> {resp.status_code}")
+    try:
+        print("[+] Response JSON:", resp.json())
+    except Exception:
+        if resp.text:
+            print("[+] Response text:", resp.text)
+        else:
+            print("[+] No response body (expected for 204).")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
-        choices=["register", "login", "both"],
-        help="What to do: register, login, or both sequentially.",
+        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "change-password"],
+        help="What to do.",
     )
     parser.add_argument(
         "--email",
@@ -181,7 +233,12 @@ def main():
     parser.add_argument(
         "--password",
         default="SuperSecretPassword123!",
-        help="Master password to use for testing.",
+        help="Master password to use for testing (or current password for change-password).",
+    )
+    parser.add_argument(
+        "--new-password",
+        default="EvenMoreSecretPassword456!",
+        help="New master password to use when action is change-password.",
     )
     parser.add_argument(
         "--base-url",
@@ -191,42 +248,59 @@ def main():
     parser.add_argument(
         "--post-vault",
         action="store_true",
-        help="Create two sample vault items after login.",
+        help="(For vault-* actions) Create two sample vault items.",
     )
     parser.add_argument(
         "--get-vault",
         action="store_true",
-        help="Fetch vault items after login.",
+        help="(For vault-* actions) Fetch vault items.",
     )
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
     register_url = f"{base_url}/auth/register"
     login_url = f"{base_url}/auth/login"
+    change_url = f"{base_url}/auth/change-password"
+    vault_items_url = f"{base_url}/vault/items"
 
     print(f"[*] Using base URL: {base_url}")
     print(f"    Register URL: {register_url}")
     print(f"    Login URL   : {login_url}")
+    print(f"    Change URL  : {change_url}")
+    print(f"    Vault URL   : {vault_items_url}")
 
     session = requests.Session()
 
     if args.action in ("register", "both"):
         register(session, register_url, args.email, args.password)
-
-    if args.action in ("login", "both"):
+    elif args.action in ("login", "both"):
+        login(session, login_url, args.email, args.password)
+    elif args.action in ("vault-post", "vault-get", "vault-both"):
         token = login(session, login_url, args.email, args.password)
+        if not token:
+            print("[!] No access token obtained; cannot run vault operations.")
+            return
 
-        # If the user requested vault operations, ensure we have an access token
         if args.post_vault or args.get_vault:
-            if not token:
-                print("[!] No access token obtained; cannot run vault operations.")
+            do_post = bool(args.post_vault)
+            do_get = bool(args.get_vault)
+        else:
+            if args.action == "vault-post":
+                do_post, do_get = True, False
+            elif args.action == "vault-get":
+                do_post, do_get = False, True
             else:
-                # default behavior: if neither flag provided but action was login/both, do nothing
-                do_post = bool(args.post_vault)
-                do_get = bool(args.get_vault)
-                # If user passed --post-vault/--get-vault, run accordingly
-                if do_post or do_get:
-                    test_vault(session, base_url, do_post=do_post, do_get=do_get)
+                do_post, do_get = True, True
+
+        test_vault(session, base_url, do_post=do_post, do_get=do_get)
+    elif args.action == "change-password":
+        token = login(session, login_url, args.email, args.password)
+        if not token:
+            print("[!] No access token obtained; cannot change password.")
+            return
+
+        change_password_and_rotate(session=session, change_url=change_url, vault_get_url=vault_items_url,
+                                   current_password=args.password, new_password=args.new_password)
 
 
 if __name__ == "__main__":
