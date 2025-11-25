@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     ALGORITHM: str
     TOKEN_EXPIRATION_MIN: int
 
+    XPOSEDORNOT_API_URL: str = "https://api.xposedornot.com/v1"
+    XPOSEDORNOT_TIMEOUT_SECONDS: float = 5.0
+
+    LEAKCHECK_API_URL: str = "https://leakcheck.io/api/public"
+    LEAKCHECK_TIMEOUT_SECONDS: float = 5.0
+
     class Config:
         env_file = '.env'
 
