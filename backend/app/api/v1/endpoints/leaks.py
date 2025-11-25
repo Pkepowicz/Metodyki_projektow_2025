@@ -35,7 +35,7 @@ async def check_email_leaks(payload: EmailLeakCheckRequest, _=Depends(get_curren
     return leaked
 
 @router.post("/password/check", response_model=bool)
-async def check_password_hash_leaks(payload: PasswordHashLeakCheckRequest, _=Depends(get_current_user)) -> bool:
+async def check_password_leaks(payload: PasswordHashLeakCheckRequest, _=Depends(get_current_user)) -> bool:
     """
     Check if the given SHA-1 password hash appears in known data breaches using LeakCheckerService service.
 
@@ -55,7 +55,7 @@ async def check_password_hash_leaks(payload: PasswordHashLeakCheckRequest, _=Dep
     async with httpx.AsyncClient() as client:
         service = LeakCheckerService(client)
         try:
-            provider_available, leaked = await service.check_password_hash_leaks(password_sha1=payload.password_sha1)
+            provider_available, leaked = await service.check_password_leaks(password_sha1=payload.password_sha1)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
