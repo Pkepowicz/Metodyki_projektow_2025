@@ -4,7 +4,6 @@ export const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    // alignItems: "center",
     backgroundColor: "#F2F6FF",
     paddingTop: 60,
   },
@@ -13,14 +12,12 @@ export const homeStyles = StyleSheet.create({
     fontWeight: "700",
     color: "#1E3A8A",
     marginLeft: 20,
-    // textAlign: "center",
     marginTop: 40,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
     color: "#6B7280",
-    // textAlign: "center",
     marginLeft: 57,
     marginBottom: 30,
   },
@@ -29,7 +26,6 @@ export const homeStyles = StyleSheet.create({
     color: "#1E3A8A",
     fontWeight: "700",
     marginLeft: 20,
-    // textAlign: "center",
     marginBottom: 7,
   },
   addButton: {
@@ -77,3 +73,4 @@ export const listStyles = StyleSheet.create({
     height: 44,
   },
 });
+
