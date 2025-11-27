@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, TextInput, Platform } from "react-native";
+import { View, Text, Button, TextInput, Platform, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { homeStyles } from "@/styles/home";
+import { settingsStyle } from "@/styles/settings";
 import { deriveKey, getMasterKey } from "@/utils/encryption";
 
 export default function SettingsScreen() {
@@ -39,38 +39,30 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 30,
-      }}
-    >
-      <Text style={homeStyles.text}>Settings</Text>
+    <View style={settingsStyle.container}>
+      <Text style={settingsStyle.title}>Settings</Text>
 
       {savedKeyExists ? (
-        <Text>Master key is set. You better not forget it xdd</Text>
+        <Text>Master key is set. You better not forget it!</Text>
       ) : (
-        <View>
+        <View style={settingsStyle.inputSection}>
           <TextInput
             value={masterPassword}
             onChangeText={setMasterPassword}
             placeholder="Master key"
             secureTextEntry
-            style={{
-              borderWidth: 1,
-              padding: 10,
-              marginTop: 10,
-              width: "100%",
-              borderRadius: 8,
-            }}
+            style={settingsStyle.input}
           />
           <Button title="Save Master Key" onPress={handleSaveKey} />
         </View>
       )}
 
-      <Button title="Log Out" onPress={handleLogout} />
-    </View>
+    <TouchableOpacity
+      onPress={handleLogout}
+      style={settingsStyle.logoutButton}
+    >
+      <Text style={settingsStyle.logoutButtonText}>Log Out</Text>
+    </TouchableOpacity>
+  </View>
   );
 }

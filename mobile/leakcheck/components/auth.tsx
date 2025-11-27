@@ -1,4 +1,4 @@
-import { View, Text, Button, TextInput } from "react-native";
+import { View, Text, Button, TextInput, TouchableOpacity } from "react-native";
 
 import { loginStyles } from "@/styles/auth";
 import { Dispatch, SetStateAction } from "react";
@@ -22,10 +22,11 @@ export default function LoginScreenComponent({
 }: LoginProps) {
   return (
     <View style={loginStyles.container}>
-      <Text style={loginStyles.title}>Login :)</Text>
+      <Text style={loginStyles.title}>Leakchecker login 🪪</Text>
       <TextInput
         style={loginStyles.input}
         placeholder="Email"
+        placeholderTextColor="#6B7280"
         value={email}
         onChangeText={set_email}
       />
@@ -33,6 +34,7 @@ export default function LoginScreenComponent({
       <TextInput
         style={loginStyles.input}
         placeholder="Password"
+        placeholderTextColor="#6B7280"
         secureTextEntry
         value={password}
         onChangeText={set_password}
@@ -42,7 +44,9 @@ export default function LoginScreenComponent({
         <Text style={loginStyles.error}>{error_message}</Text>
       ) : null}
 
-      <Button title="Log In" onPress={handle_login} />
+      <TouchableOpacity style={loginStyles.loginButton} onPress={handle_login}>
+        <Text style={loginStyles.loginButtonText}>Log In</Text>
+      </TouchableOpacity>
     </View>
   );
 }
