@@ -1,7 +1,7 @@
 import { View, Text, Modal, TextInput, Button, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-
+import { ComStyles } from "@/styles/components";
 import { VaultItem, Section } from "@/app/home/vault";
 import { decrypt, encrypt } from "@/utils/encryption";
 
@@ -28,9 +28,9 @@ function PasswordCard({
     <View
       style={{
         backgroundColor: "#fff",
-        padding: 16,
-        marginVertical: 8,
-        marginHorizontal: 12,
+        padding: 18,
+        marginVertical: 6,
+        marginHorizontal: 10,
         borderRadius: 12,
         elevation: 3,
         alignItems: "center",
@@ -44,9 +44,14 @@ function PasswordCard({
 
       <Text style={{ fontSize: 18, marginTop: 4 }}>{passwordDecrypted}</Text>
 
-      <View style={{ flexDirection: "row", marginTop: 10, gap: 50 }}>
-        <Button title="Edit" onPress={onEdit} />
-        <Button title="Delete" color="#8e57b0ff" onPress={onDelete} />
+      <View style={ComStyles.actionsRow}>
+        <Pressable onPress={onEdit} style={ComStyles.editButton}>
+          <Text style={ComStyles.buttonText}>Edit</Text>
+        </Pressable>
+
+        <Pressable onPress={onDelete} style={ComStyles.deleteButton}>
+          <Text style={ComStyles.buttonText}>Delete</Text>
+        </Pressable>
       </View>
     </View>
   );

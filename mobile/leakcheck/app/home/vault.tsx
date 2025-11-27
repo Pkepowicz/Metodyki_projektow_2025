@@ -6,6 +6,7 @@ import {
   Button,
   TextInput,
   ScrollView,
+  TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -123,22 +124,34 @@ export default function VaultScreen() {
         <ErrorMessage error={error} retry_function={loadItems} />
       ) : (
         <ScrollView>
-          <Text style={homeStyles.title}>🛡️ Welcome to your Vault 🛡️</Text>
+          <Text style={homeStyles.title}>🛡️ Leakchecker Vault</Text>
+          <Text style={homeStyles.subtitle}>Secure passwords in one place</Text>
 
-          <Button title="Add Password" onPress={() => setModalVisible(true)} />
+          <TouchableOpacity
+            style={homeStyles.addButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Text style={homeStyles.addButtonText}>＋ Add credentials</Text>
+          </TouchableOpacity>
+
+          <Text style={homeStyles.subsubtitle}>🔑 Saved credentials</Text>
 
           <TextInput
             placeholder="Search domains…"
             value={search}
             onChangeText={setSearch}
             style={{
-              marginTop: 50,
-              marginBottom: 10,
-              marginHorizontal: 12,
-              backgroundColor: "#f6faffff",
-              padding: 10,
-              borderRadius: 3,
-              borderWidth: 1,
+              marginHorizontal: 20,
+              marginBottom: 16,
+              backgroundColor: "#FFFFFF",
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              borderRadius: 14,
+              borderWidth: 0,
+              shadowColor: "#000",
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2,
             }}
           />
 

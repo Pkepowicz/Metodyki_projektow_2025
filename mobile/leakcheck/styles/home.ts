@@ -4,12 +4,46 @@ export const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "#F2F6FF",
+    paddingTop: 60,
   },
   title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#1E3A8A",
+    marginLeft: 20,
+    marginTop: 40,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginLeft: 57,
+    marginBottom: 30,
+  },
+    subsubtitle: {
     fontSize: 24,
-    marginBottom: 50,
-    marginTop: 30
+    color: "#1E3A8A",
+    fontWeight: "700",
+    marginLeft: 20,
+    marginBottom: 7,
+  },
+  addButton: {
+    backgroundColor: "#2563EB",
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginBottom: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    },
+  addButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   text: {
     fontSize: 22,
@@ -39,3 +73,4 @@ export const listStyles = StyleSheet.create({
     height: 44,
   },
 });
+
