@@ -1,9 +1,9 @@
-import { View, Text, Modal, TextInput, Button, Pressable } from "react-native";
+import { Section, VaultItem } from "@/app/home/vault";
+import { ComStyles } from "@/styles/components";
+import { decrypt, encrypt } from "@/utils/encryption";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { ComStyles } from "@/styles/components";
-import { VaultItem, Section } from "@/app/home/vault";
-import { decrypt, encrypt } from "@/utils/encryption";
+import { Button, Modal, Pressable, Text, TextInput, View } from "react-native";
 
 function PasswordCard({
   item,
@@ -145,8 +145,8 @@ export function AddPasswordModal({
 
       const token = await AsyncStorage.getItem("token");
 
-      const masterKey = await AsyncStorage.getItem("master_key");
-      if (!masterKey) {
+      const master_key = await AsyncStorage.getItem("master_key");
+      if (!master_key) {
         setErrorMessage("Master key not set. Go to settings");
       } else {
         const encryptedPassword = await encrypt(newPassword);

@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Button, TextInput, Platform, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Button, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 import { settingsStyle } from "@/styles/settings";
-import { deriveKey, getMasterKey } from "@/utils/encryption";
+import { deriveKey, getMasterKey, setMasterKey } from "@/utils/encryption";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -21,14 +20,8 @@ export default function SettingsScreen() {
 
   const handleSaveKey = async () => {
     if (!masterPassword.trim()) return;
-    // maybe something wrong here TODO test
-    const masterKey = (await deriveKey(masterPassword)).toString();
-    if (Platform.OS === "web") {
-      await AsyncStorage.setItem("master_key", masterKey);
-    } else {
-      // mobile
-      await SecureStore.setItemAsync("master_key", masterKey.toString());
-    }
+    const master_key = (await deriveKey(masterPassword)).toString();
+    setMasterKey(master_key);
     setSavedKeyExists(true);
     setMasterPassword("");
   };
@@ -43,7 +36,7 @@ export default function SettingsScreen() {
       <Text style={settingsStyle.title}>Settings</Text>
 
       {savedKeyExists ? (
-        <Text>Master key is set. You better not forget it!</Text>
+        <Text>Master key is set.</Text>
       ) : (
         <View style={settingsStyle.inputSection}>
           <TextInput
@@ -57,12 +50,12 @@ export default function SettingsScreen() {
         </View>
       )}
 
-    <TouchableOpacity
-      onPress={handleLogout}
-      style={settingsStyle.logoutButton}
-    >
-      <Text style={settingsStyle.logoutButtonText}>Log Out</Text>
-    </TouchableOpacity>
-  </View>
+      <TouchableOpacity
+        onPress={handleLogout}
+        style={settingsStyle.logoutButton}
+      >
+        <Text style={settingsStyle.logoutButtonText}>Log Out</Text>
+      </TouchableOpacity>
+    </View>
   );
 }

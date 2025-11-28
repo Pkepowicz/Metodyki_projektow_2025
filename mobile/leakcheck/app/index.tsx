@@ -1,9 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Alert } from "react-native";
-import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import LoginScreenComponent from "@/components/auth";
+import { LoginScreenComponent } from "@/components/auth";
+import { get_auth_hash } from "@/utils/auth";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -14,8 +15,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      // replace by hashing TODO
-      const auth_hash = password;
+      const auth_hash = get_auth_hash(email, password);
 
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/auth/login",
@@ -39,7 +39,7 @@ export default function LoginScreen() {
       const token = data.access_token;
       await AsyncStorage.setItem("token", token);
 
-      router.replace("/home");
+      router.replace("/home/vault");
     } catch (error) {
       Alert.alert(
         "Error occured",
