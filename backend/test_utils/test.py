@@ -222,7 +222,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
-        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "change-password"],
+        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete", "change-password"],
         help="What to do.",
     )
     parser.add_argument(
@@ -275,7 +275,7 @@ def main():
         register(session, register_url, args.email, args.password)
     elif args.action in ("login", "both"):
         login(session, login_url, args.email, args.password)
-    elif args.action in ("vault-post", "vault-get", "vault-both"):
+    elif args.action in ("vault-post", "vault-get", "vault-both", "vault-delete", "vault-put"):
         token = login(session, login_url, args.email, args.password)
         if not token:
             print("[!] No access token obtained; cannot run vault operations.")
@@ -292,7 +292,55 @@ def main():
             else:
                 do_post, do_get = True, True
 
-        test_vault(session, base_url, do_post=do_post, do_get=do_get)
+        if args.action == "vault-delete":
+            # Fetch items and delete the first one (if any)
+            get_url = f"{base_url}/vault/items"
+            print("\n[*] Fetching vault items for deletion …")
+            resp = session.get(get_url)
+            print(f"[+] GET {get_url} -> {resp.status_code}")
+            try:
+                items = resp.json()
+            except Exception:
+                print("[!] Could not parse vault items JSON; aborting deletion.")
+                return
+
+            if not items:
+                print("[!] No items to delete")
+                return
+
+            item_to_delete = items[0]
+            delete_url = f"{get_url}/{item_to_delete['id']}"
+            print(f"\n[*] Deleting item id={item_to_delete['id']} …")
+            resp = session.delete(delete_url)
+            print(f"[+] DELETE {delete_url} -> {resp.status_code}")
+        elif args.action == "vault-put":
+            # Fetch items and update the first one
+            get_url = f"{base_url}/vault/items"
+            print("\n[*] Fetching vault items for update …")
+            resp = session.get(get_url)
+            print(f"[+] GET {get_url} -> {resp.status_code}")
+            try:
+                items = resp.json()
+            except Exception:
+                print("[!] Could not parse vault items JSON; aborting update.")
+                return
+
+            if not items:
+                print("[!] No items to update")
+                return
+
+            item_to_update = items[0]
+            update_url = f"{get_url}/{item_to_update['id']}"
+            new_payload = {"site": item_to_update['site'] + "-updated", "encrypted_password": generate_fake_ciphertext()}
+            print(f"\n[*] Updating item id={item_to_update['id']} …")
+            resp = session.put(update_url, json=new_payload)
+            print(f"[+] PUT {update_url} -> {resp.status_code}")
+            try:
+                print("[+] Response JSON:", resp.json())
+            except Exception:
+                print("[+] No JSON response")
+        else:
+            test_vault(session, base_url, do_post=do_post, do_get=do_get)
     elif args.action == "change-password":
         token = login(session, login_url, args.email, args.password)
         if not token:

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -48,3 +48,41 @@ def create_vault_item(
         VaultItem: The newly created vault item including `id` and `owner_id`.
     """
     return crud_vault.create_item_for_user(db=db, user_id=current_user.id, item=item)
+
+
+@router.delete("/items/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vault_item(id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Delete a vault item owned by the authenticated user.
+
+    If the item does not exist, return 404. If it belongs to another user, return 403.
+    On success, the endpoint returns HTTP 204 NO CONTENT with an empty response body.
+    """
+    db_item = crud_vault.get_item(db=db, item_id=id)
+    if not db_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vault item not found")
+
+    if db_item.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Vault item does not belong to the authenticated user')
+
+    crud_vault.delete_item(db=db, db_item=db_item)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/items/{id}", response_model=VaultItemSchema)
+def update_vault_item(
+    id: int, item: VaultItemCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Update a vault item owned by the authenticated user.
+
+    If the item does not exist, return 404. If it belongs to another user, return 403.
+    On success, the endpoint returns the updated `VaultItem` (200) with the new data.
+    """
+    db_item = crud_vault.get_item(db=db, item_id=id)
+    if not db_item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vault item not found")
+
+    if db_item.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Vault item does not belong to the authenticated user')
+
+    updated = crud_vault.update_item(db=db, db_item=db_item, item=item)
+    return updated

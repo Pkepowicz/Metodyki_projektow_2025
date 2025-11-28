@@ -37,3 +37,31 @@ def bulk_rotate_vault_items_inplace(db: Session, owner_id: int, rotated_items: I
         db_item.site = payload_item.site
         db_item.encrypted_password = payload_item.encrypted_password
         db.add(db_item)
+
+
+def get_item(db: Session, item_id: int):
+    """Return a single vault item by id (or None if not found)."""
+    return db.query(models.VaultItem).filter(models.VaultItem.id == item_id).first()
+
+
+def delete_item(db: Session, db_item: models.VaultItem):
+    """Delete a vault item instance and commit the transaction.
+
+    Returns the deleted item for convenience.
+    """
+    db.delete(db_item)
+    db.commit()
+    return db_item
+
+
+def update_item(db: Session, db_item: models.VaultItem, item: VaultItemCreate):
+    """Update fields of a vault item and persist to the database.
+
+    Returns the updated item.
+    """
+    db_item.site = item.site
+    db_item.encrypted_password = item.encrypted_password
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
