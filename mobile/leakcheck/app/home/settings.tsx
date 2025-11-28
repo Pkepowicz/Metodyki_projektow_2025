@@ -33,16 +33,17 @@ export default function SettingsScreen() {
 
   return (
     <View style={settingsStyle.container}>
-      <Text style={settingsStyle.title}>Settings</Text>
+      <Text style={settingsStyle.title}>⚙️ Settings</Text>
 
       {savedKeyExists ? (
-        <Text>Master key is set.</Text>
+        <Text style={settingsStyle.infoText}> Master key is set.</Text>
       ) : (
         <View style={settingsStyle.inputSection}>
           <TextInput
             value={masterPassword}
             onChangeText={setMasterPassword}
             placeholder="Master key"
+            placeholderTextColor="#6B7280"
             secureTextEntry
             style={settingsStyle.input}
           />
