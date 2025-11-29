@@ -79,7 +79,7 @@ export function RegisterScreenComponent({
   const router = useRouter();
   return (
     <View style={loginStyles.container}>
-      <Text style={loginStyles.title}>Leakchecker 🪪</Text>
+      <Text style={loginStyles.title}>Leakchecker registration</Text>
       <TextInput
         style={loginStyles.input}
         placeholder="Email"
