@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Stack, useRouter, Slot } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { globalStyles } from "@/styles/global";
+import { getToken } from "@/utils/auth";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function RootLayout() {
   // runs once to check for token (when component mounts)
   useEffect(() => {
     const checkLogin = async () => {
-      const token = await AsyncStorage.getItem("token");
+      const token = await getToken();
       setIsLoggedIn(!!token);
     };
     checkLogin();
@@ -23,7 +23,7 @@ export default function RootLayout() {
 
     // redirect user (depending on login status)
     if (isLoggedIn) {
-      router.replace("/home");
+      router.replace("/home/vault");
     } else {
       router.replace("/");
     }

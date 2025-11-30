@@ -1,10 +1,9 @@
-import { RegisterScreenComponent } from "@/components/auth";
-import { get_auth_hash } from "@/utils/auth";
-import { createMasterKey, setMasterKey } from "@/utils/encryption";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert } from "react-native";
+import CryptoJS from "crypto-js";
+import { RegisterScreenComponent } from "@/components/auth";
+import { getAuthHash, isEmailValid, login } from "@/utils/auth";
+import { calculateMasterKey, stretchedMasterKey, setVaultKey } from "@/utils/encryption";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -15,15 +14,28 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     try {
-      const auth_hash = get_auth_hash(email, password);
+      if (!email || !password) {
+        setErrorMessage("Enter email and password");
+        return;
+      }
+      if (!isEmailValid(email)) {
+        setErrorMessage("Invalid email");
+        return;
+      }
 
-      // Encrypt master key
-      const master_key = createMasterKey(email, password);
-      const vault_key = "idk"; // CryptoJS.AES.encrypt(master_key, auth_hash).toString();
-      const vault_key_iv = "idk2"; // CryptoJS.lib.WordArray.random(16).toString();
-      // Save master key
-      setMasterKey(master_key);
+      // Keys creation
+      const master_key = calculateMasterKey(email, password);
+      const stretched_master_key = stretchedMasterKey(master_key)
+      const auth_hash = getAuthHash(master_key, password); // KDF? function
 
+      const symmetric_key = CryptoJS.lib.WordArray.random(32).toString();
+      const encrypted_vault_key_iv = CryptoJS.lib.WordArray.random(16).toString();
+      const encrypted_vault_key = CryptoJS.AES.encrypt(
+        symmetric_key, stretched_master_key, {encrypted_vault_key_iv}).toString();
+
+      setVaultKey(symmetric_key);
+
+      // Registration request
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/auth/register",
         {
@@ -32,25 +44,26 @@ export default function RegisterScreen() {
           body: JSON.stringify({
             email,
             auth_hash,
-            protected_vault_key: vault_key,
-            protected_vault_key_iv: vault_key_iv,
+            protected_vault_key: encrypted_vault_key,
+            protected_vault_key_iv: encrypted_vault_key_iv,
           }),
         }
       );
 
       if (!response.ok) {
         const err = await response.json();
-        Alert.alert("Register failed", err.message || "Error");
-        setErrorMessage(err.message);
+        setErrorMessage(err.detail.toString());
         return;
       }
 
-      // auto-login
-      const data = await response.json();
-      await AsyncStorage.setItem("token", data.access_token);
-      router.replace("/home/vault");
-    } catch (e) {
-      Alert.alert("Error", String(e));
+      // Auto login
+      login(email, password, router, setErrorMessage)
+    } catch (error) {
+      let errorMessage = "Failed to register";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setErrorMessage(errorMessage);
     }
   };
 

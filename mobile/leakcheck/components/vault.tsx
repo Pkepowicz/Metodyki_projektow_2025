@@ -1,7 +1,7 @@
 import { Section, VaultItem } from "@/app/home/vault";
 import { ComStyles } from "@/styles/components";
-import { decrypt, encrypt } from "@/utils/encryption";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getToken } from "@/utils/auth";
+import { decryptVaultPassword, encryptVaultPassword, getVaultKey } from "@/utils/encryption";
 import { useEffect, useState } from "react";
 import { Button, Modal, Pressable, Text, TextInput, View } from "react-native";
 
@@ -19,8 +19,16 @@ function PasswordCard({
 
   useEffect(() => {
     (async () => {
-      const passwordDecrypted = await decrypt(item.encrypted_password);
-      setPasswordDecrypted(passwordDecrypted);
+      try {
+        var password = await decryptVaultPassword(item.encrypted_password);
+        if (!password) {
+          password = 'Could not decrypt. Probably the master key is wrong';
+        }
+        setPasswordDecrypted(password);
+      } catch {
+        const password = 'Could not decrypt. Probably the master key is wrong';
+        setPasswordDecrypted(password);
+      }
     })();
   }, [item.encrypted_password]);
 
@@ -142,14 +150,13 @@ export function AddPasswordModal({
   async function addItem() {
     try {
       setSubmitting(true);
+      const token = await getToken();
+      const vault_key = getVaultKey();
 
-      const token = await AsyncStorage.getItem("token");
-
-      const master_key = await AsyncStorage.getItem("master_key");
-      if (!master_key) {
-        setErrorMessage("Master key not set. Go to settings");
+      if (vault_key == null) {
+        setErrorMessage("Master key not set. This should not have happened. No idea what to do now to be honest...");
       } else {
-        const encryptedPassword = await encrypt(newPassword);
+        const encryptedPassword = await encryptVaultPassword(newPassword);
 
         const response = await fetch(
           "https://leakchecker.mwalas.pl/api/v1/vault/items",
@@ -161,24 +168,25 @@ export function AddPasswordModal({
             },
             body: JSON.stringify({
               site: newSite,
-              encrypted_password: encryptedPassword, // later substitute encryption
+              encrypted_password: encryptedPassword,
             }),
           }
         );
 
         if (!response.ok) {
-          throw new Error(`Server returned ${response.status}`);
+          setErrorMessage("Error:" + response.text());
+        } else {
+          // Close modal + reset form
+          setNewSite("");
+          setNewPassword("");
+          setModalVisible(false);
         }
-
-        // Close modal + reset form
-        setNewSite("");
-        setNewPassword("");
-        setModalVisible(false);
       }
 
       // Reload list
       await loadItems();
     } catch (err: any) {
+      setErrorMessage("Error:" + err);
       alert(err.message);
     } finally {
       setSubmitting(false);
@@ -243,8 +251,6 @@ export function AddPasswordModal({
             onPress={addItem}
           />
 
-          <View style={{ height: 10 }} />
-
           <Button
             title="Cancel"
             color="red"
@@ -270,8 +276,16 @@ export function EditPasswordModal({
 
   useEffect(() => {
     (async () => {
-      const passwordDecrypted = await decrypt(item.encrypted_password);
-      setPasswordDecrypted(passwordDecrypted);
+      try {
+        var password = await decryptVaultPassword(item.encrypted_password);
+        if (!password) {
+          password = 'Could not decrypt. Probably the master key is wrong';
+        }
+        setPasswordDecrypted(password);
+      } catch {
+        const password = 'Could not decrypt. Probably the master key is wrong';
+        setPasswordDecrypted(password);
+      }
     })();
   }, [item.encrypted_password]);
 
