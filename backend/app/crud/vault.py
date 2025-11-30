@@ -61,7 +61,6 @@ def update_item(db: Session, db_item: models.VaultItem, item: VaultItemCreate):
     """
     db_item.site = item.site
     db_item.encrypted_password = item.encrypted_password
-    db.add(db_item)
     db.commit()
     db.refresh(db_item)
     return db_item
