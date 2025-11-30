@@ -3,7 +3,7 @@ import { ComStyles } from "@/styles/components";
 import { decrypt, encrypt } from "@/utils/encryption";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Button, Modal, Pressable, Text, TextInput, View } from "react-native";
+import { Modal, Pressable, Text, TextInput, View, TouchableOpacity } from "react-native";
 
 function PasswordCard({
   item,
@@ -147,7 +147,7 @@ export function AddPasswordModal({
 
       const master_key = await AsyncStorage.getItem("master_key");
       if (!master_key) {
-        setErrorMessage("Master key not set. Go to settings");
+        setErrorMessage("Master key not set. Navigate to the settings");
       } else {
         const encryptedPassword = await encrypt(newPassword);
 
@@ -192,64 +192,49 @@ export function AddPasswordModal({
       visible={modalVisible}
       onRequestClose={() => setModalVisible(false)}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <View
-          style={{
-            width: "85%",
-            backgroundColor: "white",
-            padding: 20,
-            borderRadius: 10,
-          }}
-        >
-          <Text style={{ fontSize: 18, marginBottom: 10 }}>Add Vault Item</Text>
+      <View style={ComStyles.modalOverlay}>
+        <View style={ComStyles.modalContainer}>
+          <Text style={ComStyles.modalTitle}>Add Vault Item</Text>
 
-          {errorMessage && <Text>errorMessage</Text>}
+          {errorMessage && (
+            <Text style={ComStyles.errorText}>{errorMessage}</Text>
+          )}
 
           <TextInput
             placeholder="Site (example.com)"
+            placeholderTextColor="#6B7280"
             value={newSite}
             onChangeText={setNewSite}
-            style={{
-              borderWidth: 1,
-              padding: 10,
-              borderRadius: 6,
-              marginBottom: 10,
-            }}
+            style={ComStyles.modalInput}
           />
 
           <TextInput
             placeholder="Encrypted Password"
+            placeholderTextColor="#6B7280"
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
-            style={{
-              borderWidth: 1,
-              padding: 10,
-              borderRadius: 6,
-              marginBottom: 10,
-            }}
+            style={ComStyles.modalInput}
           />
 
-          <Button
-            title={submitting ? "Saving..." : "Save"}
-            disabled={submitting || newSite === "" || newPassword === ""}
-            onPress={addItem}
-          />
+          <View style={ComStyles.modalButtons}>
+            <TouchableOpacity
+              style={[ComStyles.button, ComStyles.saveButton]}
+              onPress={addItem}
+              disabled={submitting || newSite === "" || newPassword === ""}
+            >
+              <Text style={ComStyles.buttonText}>
+                {submitting ? "Saving..." : "Save"}
+              </Text>
+            </TouchableOpacity>
 
-          <View style={{ height: 10 }} />
-
-          <Button
-            title="Cancel"
-            color="red"
-            onPress={() => setModalVisible(false)}
-          />
+            <TouchableOpacity
+              style={[ComStyles.button, ComStyles.cancelButton]}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={ComStyles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -277,50 +262,44 @@ export function EditPasswordModal({
 
   return (
     <Modal visible={true} transparent>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.5)",
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "white",
-            padding: 20,
-            borderRadius: 10,
-            width: "80%",
-          }}
-        >
-          <Text>Edit entry</Text>
+      <View style={ComStyles.modalOverlay}>
+      <View style={ComStyles.modalContainer}>
+        <Text style={ComStyles.modalTitle}>Edit Entry</Text>
 
-          <TextInput
-            value={user}
-            onChangeText={setUser}
-            style={{ borderWidth: 1, padding: 8, marginTop: 10 }}
-          />
-          <TextInput
-            value={passwordDecrypted}
-            onChangeText={setPasswordDecrypted}
-            style={{ borderWidth: 1, padding: 8, marginTop: 10 }}
-          />
+        <TextInput
+          value={user}
+          onChangeText={setUser}
+          placeholder="Domain" 
+          placeholderTextColor="#6B7280"
+          style={ComStyles.modalInput}
+        />
 
-          <View
-            style={{
-              flexDirection: "row",
-              marginTop: 30,
-              justifyContent: "space-evenly",
-            }}
+        <TextInput
+          value={passwordDecrypted}
+          onChangeText={setPasswordDecrypted}
+          placeholder="Password"
+          placeholderTextColor="#6B7280"
+          secureTextEntry
+          style={ComStyles.modalInput}
+        />
+
+        <View style={ComStyles.modalButtons}>
+          <TouchableOpacity
+            style={[ComStyles.button, ComStyles.saveButton]}
+            onPress={() => onSave(item, user, passwordDecrypted)}
           >
-            <Button
-              title="Save"
-              onPress={() => onSave(item, user, passwordDecrypted)}
-            />
-            <Button title="Cancel" color="red" onPress={onClose} />
-          </View>
+            <Text style={ComStyles.buttonText}>Save</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[ComStyles.button, ComStyles.cancelButton]}
+            onPress={onClose}
+          >
+            <Text style={ComStyles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </View>
+    </View>
     </Modal>
   );
 }
@@ -336,39 +315,31 @@ export function DeleteConfirmModal({
 }) {
   return (
     <Modal visible={true} transparent>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.5)",
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "white",
-            padding: 20,
-            borderRadius: 10,
-            width: "80%",
-            alignItems: "center",
-          }}
-        >
-          <Text>Delete this entry?</Text>
+      <View style={ComStyles.modalOverlay}>
+      <View style={[ComStyles.modalContainer, { alignItems: "center", width: "80%" }]}>
+        <Text style={ComStyles.modalTitle}>Delete this entry?</Text>
 
-          <Text style={{ marginVertical: 10 }}>
-            {item.site} {item.user}
-          </Text>
+        <Text style={{ marginVertical: 10, textAlign: "center" }}>
+          {item.site} {item.user}
+        </Text>
 
-          <View style={{ flexDirection: "row", gap: 40 }}>
-            <Button
-              title="Delete"
-              color="#8e57b0ff"
-              onPress={() => onConfirm(item)}
-            />
-            <Button title="Cancel" onPress={onCancel} />
-          </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 20 }}>
+          <TouchableOpacity
+            style={[ComStyles.button, { backgroundColor: "#DC2626" }]}
+            onPress={() => onConfirm(item)}
+          >
+            <Text style={ComStyles.buttonText}>Delete</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[ComStyles.button, ComStyles.cancelButton]}
+            onPress={onCancel}
+          >
+            <Text style={ComStyles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </View>
+    </View>
     </Modal>
   );
 }

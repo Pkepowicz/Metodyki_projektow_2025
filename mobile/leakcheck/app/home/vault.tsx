@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from '@react-navigation/native';
 
 import { homeStyles } from "@/styles/home";
 import { globalStyles } from "@/styles/global";
@@ -83,6 +84,12 @@ export default function VaultScreen() {
       setLoading(false);
     }
   }
+  //fetch passwords when added in leakchecker vault
+  useFocusEffect(
+      React.useCallback(() => {
+        loadItems();
+      }, [])
+    );
 
   // fetch passwords in vault
   useEffect(() => {
@@ -138,6 +145,7 @@ export default function VaultScreen() {
 
           <TextInput
             placeholder="Search domains…"
+            placeholderTextColor="#6B7280"
             value={search}
             onChangeText={setSearch}
             style={{
