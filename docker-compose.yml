@@ -13,6 +13,9 @@ services:
         condition: service_healthy
     networks:
       - main_net
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
 
   db:
     image: postgres:15-alpine
@@ -27,6 +30,30 @@ services:
       retries: 5
     networks:
       - main_net
+
+  mobile:
+    build: ./mobile
+    container_name: ${COMPOSE_PROJECT_NAME}-mobile
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+    volumes:
+      - ./mobile/leakcheck:/app
+      - /app/node_modules
+      - ~/.expo:/root/.expo
+    networks:
+      - main_net
+    environment:
+      - EXPO_TUNNEL_SUBDOMAIN=${COMPOSE_PROJECT_NAME}-mobile
+      - EXPO_DEBUG=true
+      - NODE_OPTIONS=--max-old-space-size=4096
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
 networks:
   main_net:
