@@ -28,5 +28,9 @@ export const leakStyles = StyleSheet.create({
     textAlign: "center",   
     fontSize: 14,
   },
-
+  subtitle: {
+    fontSize: 20,
+    color: "#a10964ff",
+    marginLeft: 28,
+  },
 });
