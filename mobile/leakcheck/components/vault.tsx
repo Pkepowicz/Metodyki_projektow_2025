@@ -25,9 +25,10 @@ function PasswordCard({
           password = 'Could not decrypt. Probably the master key is wrong';
         }
         setPasswordDecrypted(password);
-      } catch {
-        const password = 'Could not decrypt. Probably the master key is wrong';
-        setPasswordDecrypted(password);
+      } catch (error) {
+        if (error instanceof Error) {
+          setPasswordDecrypted(error.message);
+        }
       }
     })();
   }, [item.encrypted_password]);
@@ -282,9 +283,10 @@ export function EditPasswordModal({
           password = 'Could not decrypt. Probably the master key is wrong';
         }
         setPasswordDecrypted(password);
-      } catch {
-        const password = 'Could not decrypt. Probably the master key is wrong';
-        setPasswordDecrypted(password);
+      } catch (error) {
+        if (error instanceof Error) {
+          setPasswordDecrypted(error.message);
+        }
       }
     })();
   }, [item.encrypted_password]);

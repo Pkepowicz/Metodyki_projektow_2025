@@ -5,15 +5,17 @@ import { get_key_value, set_key_value } from "./storage";
 
 
 export async function encryptVaultPassword(password: string): Promise<string> {
-  const master_key = await getVaultKey();
-  if (!master_key) throw Error("Master key not set");
-  return CryptoJS.AES.encrypt(password, master_key).toString();
+  const vault_key = await getVaultKey();
+  if (!vault_key) throw Error("Vault key not set");
+  return CryptoJS.AES.encrypt(password, vault_key).toString();
 }
 
 export async function decryptVaultPassword(encrypted_password: string): Promise<string> {
-  const master_key = await getVaultKey();
-  if (!master_key) throw Error("Master key not set");
-  const bytes = CryptoJS.AES.decrypt(encrypted_password, master_key);
+  const vault_key = await getVaultKey();
+  if (!vault_key) {
+    throw Error("Error: Vault key not set");
+  }
+  const bytes = CryptoJS.AES.decrypt(encrypted_password, vault_key);
   return bytes.toString(CryptoJS.enc.Utf8);
 }
 
