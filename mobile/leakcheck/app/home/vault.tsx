@@ -1,24 +1,24 @@
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   ActivityIndicator,
-  TextInput,
   ScrollView,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
-import { useFocusEffect } from '@react-navigation/native';
 
-import { homeStyles } from "@/styles/home";
-import { globalStyles } from "@/styles/global";
 import ErrorMessage from "@/components/global";
 import {
-  PasswordsList,
   AddPasswordModal,
-  EditPasswordModal,
   DeleteConfirmModal,
+  EditPasswordModal,
+  PasswordsList,
 } from "@/components/vault";
+import { globalStyles } from "@/styles/global";
+import { homeStyles } from "@/styles/home";
 import { getToken, logout } from "@/utils/auth";
 
 export type VaultItem = {
@@ -92,10 +92,10 @@ export default function VaultScreen() {
   }
   //fetch passwords when added in leakchecker vault
   useFocusEffect(
-      React.useCallback(() => {
-        loadItems();
-      }, [])
-    );
+    React.useCallback(() => {
+      loadItems();
+    }, [])
+  );
 
   // fetch passwords in vault
   useEffect(() => {
