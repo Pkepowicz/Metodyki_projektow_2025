@@ -6,6 +6,8 @@ Supports:
     - user login
     - vault operations (POST/GET)
     - password change with vault rotation
+    - email leak check
+    - password leak check (via SHA-1 hash)
 
 Usage examples:
     python test.py register
@@ -15,6 +17,8 @@ Usage examples:
     python test.py vault-get
     python test.py vault-both
     python test.py change-password --new-password "NewPass123!"
+    python test.py leaks-email
+    python test.py leaks-password
 """
 
 import argparse
@@ -40,6 +44,16 @@ def derive_auth_hash(master_password: str) -> str:
         - register and login will match
     """
     return hashlib.sha256(master_password.encode("utf-8")).hexdigest()
+
+
+def sha1_password(password: str) -> str:
+    """
+    Compute the SHA-1 hash (hex, upper-case) of a password string.
+
+    Used for testing the /leaks/password/check endpoint, which expects the
+    client to send a SHA-1 hash of the password.
+    """
+    return hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
 
 
 def generate_fake_protected_vault_key() -> str:
@@ -92,7 +106,7 @@ def register(session: requests.Session, register_url: str, email: str, master_pa
             print("[+] No response body.")
 
 
-def login( session: requests.Session, login_url: str, email: str, master_password: str) -> Optional[str]:
+def login(session: requests.Session, login_url: str, email: str, master_password: str) -> Optional[str]:
     auth_hash = derive_auth_hash(master_password)
 
     payload = {
@@ -218,11 +232,50 @@ def change_password_and_rotate(session: requests.Session,change_url: str,vault_g
             print("[+] No response body (expected for 204).")
 
 
+def test_email_leak(session: requests.Session, base_url: str, email_to_check: str) -> None:
+    """
+    Call POST /leaks/email/check with the given email and print the result.
+
+    Assumes the session already has an Authorization header set.
+    """
+    url, payload = f"{base_url}/leaks/email/check", {"email": email_to_check}
+
+    print(f"\n[*] Checking email leak for {email_to_check!r} …")
+    resp = session.post(url, json=payload)
+    print(f"[+] POST {url} -> {resp.status_code}")
+    try:
+        data = resp.json()
+        print("[+] Response JSON:", data)
+    except Exception:
+        print("[+] Raw response text:", resp.text)
+
+
+def test_password_leak(session: requests.Session, base_url: str, password_to_check: str) -> None:
+    """
+    Call POST /leaks/password/check with the SHA-1 of the given password
+    and print the result.
+
+    Assumes the session already has an Authorization header set.
+    """
+    url, password_sha1 = f"{base_url}/leaks/password/check", sha1_password(password_to_check)
+    payload = {"password_sha1": password_sha1}
+
+    print(f"\n[*] Checking password leak (SHA-1={password_sha1}) …")
+    resp = session.post(url, json=payload)
+    print(f"[+] POST {url} -> {resp.status_code}")
+    try:
+        data = resp.json()
+        print("[+] Response JSON:", data)
+    except Exception:
+        print("[+] Raw response text:", resp.text)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
-        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "change-password"],
+        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",  "change-password",
+                 "leaks-email", "leaks-password"],
         help="What to do.",
     )
     parser.add_argument(
@@ -255,6 +308,16 @@ def main():
         action="store_true",
         help="(For vault-* actions) Fetch vault items.",
     )
+    parser.add_argument(
+        "--check-email",
+        default=None,
+        help="Email to check for leaks (defaults to --email if not provided).",
+    )
+    parser.add_argument(
+        "--check-password",
+        default=None,
+        help="Password to check for leaks (defaults to --password if not provided).",
+    )
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
@@ -275,7 +338,7 @@ def main():
         register(session, register_url, args.email, args.password)
     elif args.action in ("login", "both"):
         login(session, login_url, args.email, args.password)
-    elif args.action in ("vault-post", "vault-get", "vault-both"):
+    elif args.action in ("vault-post", "vault-get", "vault-both", "vault-delete", "vault-put"):
         token = login(session, login_url, args.email, args.password)
         if not token:
             print("[!] No access token obtained; cannot run vault operations.")
@@ -292,7 +355,55 @@ def main():
             else:
                 do_post, do_get = True, True
 
-        test_vault(session, base_url, do_post=do_post, do_get=do_get)
+        if args.action == "vault-delete":
+            # Fetch items and delete the first one (if any)
+            get_url = f"{base_url}/vault/items"
+            print("\n[*] Fetching vault items for deletion …")
+            resp = session.get(get_url)
+            print(f"[+] GET {get_url} -> {resp.status_code}")
+            try:
+                items = resp.json()
+            except Exception:
+                print("[!] Could not parse vault items JSON; aborting deletion.")
+                return
+
+            if not items:
+                print("[!] No items to delete")
+                return
+
+            item_to_delete = items[0]
+            delete_url = f"{get_url}/{item_to_delete['id']}"
+            print(f"\n[*] Deleting item id={item_to_delete['id']} …")
+            resp = session.delete(delete_url)
+            print(f"[+] DELETE {delete_url} -> {resp.status_code}")
+        elif args.action == "vault-put":
+            # Fetch items and update the first one
+            get_url = f"{base_url}/vault/items"
+            print("\n[*] Fetching vault items for update …")
+            resp = session.get(get_url)
+            print(f"[+] GET {get_url} -> {resp.status_code}")
+            try:
+                items = resp.json()
+            except Exception:
+                print("[!] Could not parse vault items JSON; aborting update.")
+                return
+
+            if not items:
+                print("[!] No items to update")
+                return
+
+            item_to_update = items[0]
+            update_url = f"{get_url}/{item_to_update['id']}"
+            new_payload = {"site": item_to_update['site'] + "-updated", "encrypted_password": generate_fake_ciphertext()}
+            print(f"\n[*] Updating item id={item_to_update['id']} …")
+            resp = session.put(update_url, json=new_payload)
+            print(f"[+] PUT {update_url} -> {resp.status_code}")
+            try:
+                print("[+] Response JSON:", resp.json())
+            except Exception:
+                print("[+] No JSON response")
+        else:
+            test_vault(session, base_url, do_post=do_post, do_get=do_get)
     elif args.action == "change-password":
         token = login(session, login_url, args.email, args.password)
         if not token:
@@ -301,6 +412,22 @@ def main():
 
         change_password_and_rotate(session=session, change_url=change_url, vault_get_url=vault_items_url,
                                    current_password=args.password, new_password=args.new_password)
+    elif args.action == "leaks-email":
+        token = login(session, login_url, args.email, args.password)
+        if not token:
+            print("[!] No access token obtained; cannot run email leak check.")
+            return
+
+        email_to_check = args.check_email or args.email
+        test_email_leak(session, base_url, email_to_check)
+    elif args.action == "leaks-password":
+        token = login(session, login_url, args.email, args.password)
+        if not token:
+            print("[!] No access token obtained; cannot run password leak check.")
+            return
+
+        password_to_check = args.check_password or args.password
+        test_password_leak(session, base_url, password_to_check)
 
 
 if __name__ == "__main__":
