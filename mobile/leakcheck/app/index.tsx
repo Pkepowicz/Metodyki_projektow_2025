@@ -1,61 +1,62 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
 import { LoginScreenComponent } from "@/components/auth";
-import { get_auth_hash } from "@/utils/auth";
+import { isEmailValid, login } from "@/utils/auth";
+import { getVaultKey } from "@/utils/encryption";
 
 export default function LoginScreen() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
+    setIsLoading(true);
     try {
-      const auth_hash = get_auth_hash(email, password);
-
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/auth/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            auth_hash,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const error = await response.json();
-        setErrorMessage(error.message || "Invalid credentials");
-        Alert.alert("Login failed", error.message || "Invalid credentials");
+      if (!isEmailValid(email)) {
+        setErrorMessage("Invalid email");
+        setIsLoading(false);
         return;
       }
 
-      const data = await response.json();
-      const token = data.access_token;
-      await AsyncStorage.setItem("token", token);
+      const vault_key = await getVaultKey()
+      console.log(vault_key)
+      if (vault_key == null) {
+        // TODO get endpoint
+        setErrorMessage("Tough luck mate, can't restore the vault key, because it's not implemented yet.\nCreate new user :)");
+        setIsLoading(false);
+        return;
+      }
 
-      router.replace("/home/vault");
+      // Login
+      await login(email, password, router, setErrorMessage)
     } catch (error) {
-      Alert.alert(
-        "Error occured",
-        "Unable to log in. Programmers skill issue :(\n" + error
-      );
+      setErrorMessage("Unable to log in. Programmers skill issue :(\n" + error)
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <LoginScreenComponent
+    <>
+    {/* TODO ActivityIndicator not working on mobile?? */}
+    {isLoading
+      ? <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#4151ddff" />
+        </View>
+      : <LoginScreenComponent
       handle_login={handleLogin}
       email={email}
       set_email={setEmail}
       password={password}
       set_password={setPassword}
       error_message={errorMessage}
-    />
+      />
+    }
+    </>
   );
 }

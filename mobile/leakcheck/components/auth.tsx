@@ -31,6 +31,8 @@ export function LoginScreenComponent({
         placeholderTextColor="#6B7280"
         value={email}
         onChangeText={set_email}
+        inputMode='email'
+        autoComplete="email"
       />
 
       <TextInput
@@ -86,6 +88,8 @@ export function RegisterScreenComponent({
         placeholderTextColor="#6B7280"
         value={email}
         onChangeText={set_email}
+        inputMode='email'
+        autoComplete="email"
       />
 
       <TextInput

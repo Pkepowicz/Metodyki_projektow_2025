@@ -1,25 +1,25 @@
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
   ActivityIndicator,
-  Button,
-  TextInput,
   ScrollView,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from '@react-navigation/native';
 
-import { homeStyles } from "@/styles/home";
-import { globalStyles } from "@/styles/global";
 import ErrorMessage from "@/components/global";
 import {
-  PasswordsList,
   AddPasswordModal,
-  EditPasswordModal,
   DeleteConfirmModal,
+  EditPasswordModal,
+  PasswordsList,
 } from "@/components/vault";
+import { globalStyles } from "@/styles/global";
+import { homeStyles } from "@/styles/home";
+import { getToken, logout } from "@/utils/auth";
 
 export type VaultItem = {
   encrypted_password: string;
@@ -44,12 +44,14 @@ export default function VaultScreen() {
   const [editItem, setEditItem] = useState<VaultItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<VaultItem | null>(null);
 
+  const router = useRouter();
+
   async function loadItems() {
     try {
       setLoading(true);
       setError(null);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await getToken();
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/vault/items",
         {
@@ -61,6 +63,10 @@ export default function VaultScreen() {
         }
       );
       if (!response.ok) {
+        if (response.status == 401) {
+          logout(router);
+          return;
+        }
         throw new Error(`Server returned ${response.status}`);
       }
 
@@ -86,10 +92,10 @@ export default function VaultScreen() {
   }
   //fetch passwords when added in leakchecker vault
   useFocusEffect(
-      React.useCallback(() => {
-        loadItems();
-      }, [])
-    );
+    React.useCallback(() => {
+      loadItems();
+    }, [])
+  );
 
   // fetch passwords in vault
   useEffect(() => {
