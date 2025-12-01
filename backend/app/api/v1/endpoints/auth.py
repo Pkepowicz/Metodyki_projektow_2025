@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.base import get_db
 from app.db.models import User
-from app.schemas.user import UserCreate, UserLogin, ChangePasswordAndRotatePayload
+from app.schemas.user import UserCreate, UserLogin, ChangePasswordAndRotatePayload, ProtectedVaultKey
 from app.schemas.token import Token
 from app.crud import user as crud_user, vault as crud_vault
 from app.core.security import verify_password, create_access_token
@@ -21,7 +21,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)) -> Response:
 
     Args:
         user (UserCreate): Incoming registration payload containing email,
-            AuthHash, ProtectedVaultKey, and KDF iteration count.
+            AuthHash, ProtectedVaultKey, IV.
         db (Session): SQLAlchemy database session provided by dependency injection.
 
     Raises:
@@ -39,7 +39,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)) -> Response:
 
 
 @router.post("/login", response_model=Token)
-def login_for_access_token(user: UserLogin, db: Session = Depends(get_db)):
+def login_user(user: UserLogin, db: Session = Depends(get_db)):
     """
     This endpoint receives the client's AuthHash, verifies it against the stored
     FinalHash, and returns a signed JWT access token if authentication succeeds.
@@ -62,6 +62,7 @@ def login_for_access_token(user: UserLogin, db: Session = Depends(get_db)):
 
     access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password_and_rotate(payload: ChangePasswordAndRotatePayload, db: Session = Depends(get_db),
@@ -101,9 +102,22 @@ def change_password_and_rotate(payload: ChangePasswordAndRotatePayload, db: Sess
         crud_user.update_user_auth(db=db, user=current_user, new_auth_hash=payload.new_auth_hash,
                                    new_protected_vault_key=payload.new_protected_vault_key,
                                    new_protected_vault_key_iv=payload.new_protected_vault_key_iv)
-        crud_vault.bulk_rotate_vault_items_inplace(db=db, owner_id=current_user.id,rotated_items=payload.items)
+        crud_vault.bulk_rotate_vault_items_inplace(db=db, owner_id=current_user.id, rotated_items=payload.items)
         db.commit()
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='Failed to change password and rotate vault items') from exc
+
+
+@router.get("/vault-key", response_model=ProtectedVaultKey)
+def get_protected_vault_key_material(current_user: User = Depends(get_current_user)) -> ProtectedVaultKey:
+    """
+    Return the authenticated user's protected vault key and IV.
+
+    Uses the JWT-based authentication (get_current_user) to ensure that the
+    caller is authorized and then exposes the encrypted vault key material,
+    which the client can decrypt locally.
+    """
+    return ProtectedVaultKey(protected_vault_key=current_user.protected_vault_key,
+                             protected_vault_key_iv=current_user.protected_vault_key_iv)
