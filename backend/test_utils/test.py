@@ -8,6 +8,7 @@ Supports:
     - password change with vault rotation
     - email leak check
     - password leak check (via SHA-1 hash)
+    - fetching protected vault key (protected_vault_key + protected_vault_key_iv)
 
 Usage examples:
     python test.py register
@@ -19,6 +20,7 @@ Usage examples:
     python test.py change-password --new-password "NewPass123!"
     python test.py leaks-email
     python test.py leaks-password
+    python test.py vault-key
 """
 
 import argparse
@@ -176,7 +178,7 @@ def test_vault(session: requests.Session, base_url: str, do_post: bool = True, d
             print("[+] No JSON response on GET")
 
 
-def change_password_and_rotate(session: requests.Session,change_url: str,vault_get_url: str,
+def change_password_and_rotate(session: requests.Session, change_url: str, vault_get_url: str,
                                current_password: str, new_password: str) -> None:
     """
     Test helper: performs change-password + vault rotation flow:
@@ -270,12 +272,40 @@ def test_password_leak(session: requests.Session, base_url: str, password_to_che
         print("[+] Raw response text:", resp.text)
 
 
+def test_vault_key(session: requests.Session, base_url: str) -> None:
+    """
+    Call GET /auth/vault-key and print the result.
+
+    Assumes the session already has an Authorization header set.
+    """
+    url = f"{base_url}/auth/vault-key"
+
+    print("\n[*] Fetching protected vault key …")
+    resp = session.get(url)
+    print(f"[+] GET {url} -> {resp.status_code}")
+    try:
+        data = resp.json()
+        print("[+] Response JSON:", data)
+        key = data.get("protected_vault_key")
+        iv = data.get("protected_vault_key_iv")
+        if key and iv:
+            print(f"[+] protected_vault_key: {key}")
+            print(f"[+] protected_vault_key_iv: {iv}")
+        else:
+            print("[!] Missing expected fields in response.")
+    except Exception:
+        if resp.text:
+            print("[+] Raw response text:", resp.text)
+        else:
+            print("[+] No response body.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
         choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",  "change-password",
-                 "leaks-email", "leaks-password"],
+                 "leaks-email", "leaks-password", "vault-key"],
         help="What to do.",
     )
     parser.add_argument(
@@ -336,7 +366,10 @@ def main():
 
     if args.action in ("register", "both"):
         register(session, register_url, args.email, args.password)
-    elif args.action in ("login", "both"):
+        if args.action == "both":
+            # After registering, also log in
+            login(session, login_url, args.email, args.password)
+    elif args.action in ("login",):
         login(session, login_url, args.email, args.password)
     elif args.action in ("vault-post", "vault-get", "vault-both", "vault-delete", "vault-put"):
         token = login(session, login_url, args.email, args.password)
@@ -428,6 +461,13 @@ def main():
 
         password_to_check = args.check_password or args.password
         test_password_leak(session, base_url, password_to_check)
+    elif args.action == "vault-key":
+        token = login(session, login_url, args.email, args.password)
+        if not token:
+            print("[!] No access token obtained; cannot fetch vault key.")
+            return
+
+        test_vault_key(session, base_url)
 
 
 if __name__ == "__main__":
