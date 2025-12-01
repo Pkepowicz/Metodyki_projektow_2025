@@ -115,9 +115,8 @@ def get_protected_vault_key_material(current_user: User = Depends(get_current_us
     """
     Return the authenticated user's protected vault key and IV.
 
-    Uses the JWT-based authentication (get_current_user) to ensure that the
-    caller is authorized and then exposes the encrypted vault key material,
-    which the client can decrypt locally.
+    Uses the JWT-based authentication (get_current_user) to ensure that the caller is authorized and then exposes
+    the encrypted vault key material, which the client can decrypt locally.
     """
     return ProtectedVaultKey(protected_vault_key=current_user.protected_vault_key,
                              protected_vault_key_iv=current_user.protected_vault_key_iv)
