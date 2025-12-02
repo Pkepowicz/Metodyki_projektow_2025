@@ -260,7 +260,7 @@ def test_password_leak(session: requests.Session, base_url: str, password_to_che
     Assumes the session already has an Authorization header set.
     """
     url, password_sha1 = f"{base_url}/leaks/password/check", sha1_password(password_to_check)
-    payload = {"password_sha1": password_sha1}
+    payload = {"password": password_sha1}
 
     print(f"\n[*] Checking password leak (SHA-1={password_sha1}) …")
     resp = session.post(url, json=payload)
