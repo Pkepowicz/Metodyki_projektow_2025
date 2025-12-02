@@ -65,7 +65,7 @@ def delete_vault_item(id: int, current_user: User = Depends(get_current_user), d
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Vault item does not belong to the authenticated user')
 
     crud_vault.delete_item(db=db, db_item=db_item)
-    return
+
 
 
 @router.put("/items/{id}", response_model=VaultItemSchema)

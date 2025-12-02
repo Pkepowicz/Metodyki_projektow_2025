@@ -40,7 +40,7 @@ async def check_password_leaks(payload: PasswordHashLeakCheckRequest, _=Depends(
     Check if the given SHA-1 password hash appears in known data breaches using LeakCheckerService service.
 
     Args:
-        payload: ({"password_sha1": "<40-char SHA-1 hex>"})
+        payload: ({"password": "<40-char SHA-1 hex>"})
             Request body containing the SHA-1 password hash to be checked.
         _: Unused; ensures the user is authenticated via get_current_user dependency.
 
@@ -55,7 +55,7 @@ async def check_password_leaks(payload: PasswordHashLeakCheckRequest, _=Depends(
     async with httpx.AsyncClient() as client:
         service = LeakCheckerService(client)
         try:
-            provider_available, leaked = await service.check_password_leaks(password_sha1=payload.password_sha1)
+            provider_available, leaked = await service.check_password_leaks(password_sha1=payload.password)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
