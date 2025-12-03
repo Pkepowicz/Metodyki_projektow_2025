@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from "react";
+import CryptoJS from "crypto-js";
+import React, { useEffect, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
+  View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { homeStyles } from "@/styles/home";
 import { leakStyles } from "@/styles/leakchecker";
+import { getToken } from "@/utils/auth";
 
 export default function LeakCheckScreen() {
   const [email, setEmail] = useState("");
@@ -48,7 +49,7 @@ export default function LeakCheckScreen() {
       setError(null);
       setSuccess(false);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await getToken();
 
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/vault/items",
@@ -60,7 +61,7 @@ export default function LeakCheckScreen() {
           },
           body: JSON.stringify({
             site: email.trim(),
-            user: "", 
+            user: "",
             password: passwordToCheck,
           }),
         }
@@ -90,7 +91,7 @@ export default function LeakCheckScreen() {
       setSubmittingEmail(true);
       setError(null);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await getToken();
 
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/leaks/email/check",
@@ -127,7 +128,8 @@ export default function LeakCheckScreen() {
       setSubmittingPasswordCheck(true);
       setError(null);
 
-      const token = await AsyncStorage.getItem("token");
+      const token = await getToken();
+      const password_hash = CryptoJS.SHA1(passwordToCheck).toString();
 
       const response = await fetch(
         "https://leakchecker.mwalas.pl/api/v1/leaks/password/check",
@@ -137,7 +139,7 @@ export default function LeakCheckScreen() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ password: passwordToCheck }),
+          body: JSON.stringify({ password: password_hash }),
         }
       );
 
@@ -154,22 +156,27 @@ export default function LeakCheckScreen() {
     }
   }
 
-  const canAddCredentials = email.trim().length > 0 && passwordToCheck.trim().length > 0;
+  const canAddCredentials =
+    email.trim().length > 0 && passwordToCheck.trim().length > 0;
 
   return (
     <View style={homeStyles.container}>
       <ScrollView keyboardShouldPersistTaps="handled">
         <Text style={homeStyles.title}>🔒 Leakchecker</Text>
-        <Text style={homeStyles.subtitle}>Check if your password has been leaked</Text>
+        <Text style={homeStyles.subtitle}>
+          Check if your password has been leaked
+        </Text>
 
         <TouchableOpacity
-            style={[homeStyles.addButton, {backgroundColor: "#a10964ff"},]}
-          >
-            <Text style={homeStyles.addButtonText}>Generate password</Text>
-          </TouchableOpacity>
+          style={[homeStyles.addButton, { backgroundColor: "#a10964ff" }]}
+        >
+          <Text style={homeStyles.addButtonText}>Generate password</Text>
+        </TouchableOpacity>
 
-         {/* --- Check Email ---  */}
-        <Text style={[leakStyles.subtitle, { marginTop: 20 }]}>Check if email is leaked</Text>
+        {/* --- Check Email ---  */}
+        <Text style={[leakStyles.subtitle, { marginTop: 20 }]}>
+          Check if email is leaked
+        </Text>
         <TextInput
           placeholder="Email"
           placeholderTextColor="#6B7280"
@@ -179,11 +186,19 @@ export default function LeakCheckScreen() {
           style={[leakStyles.input, { marginBottom: 14 }]}
         />
         <TouchableOpacity
-          style={[homeStyles.addButton, {marginBottom: 5}, submittingEmail && { opacity: 0.6 }]}
+          style={[
+            homeStyles.addButton,
+            { marginBottom: 5 },
+            submittingEmail && { opacity: 0.6 },
+          ]}
           onPress={checkEmailLeaks}
           disabled={submittingEmail}
         >
-          {submittingEmail ? <ActivityIndicator color="#fff" /> : <Text style={homeStyles.addButtonText}>Check</Text>}
+          {submittingEmail ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={homeStyles.addButtonText}>Check</Text>
+          )}
         </TouchableOpacity>
         {emailLeaked !== null && (
           <Text style={leakStyles.successText}>
@@ -192,7 +207,9 @@ export default function LeakCheckScreen() {
         )}
 
         {/* --- Check Password --- */}
-        <Text style={[leakStyles.subtitle, { marginTop: 20 }]}>Check if password is leaked</Text>
+        <Text style={[leakStyles.subtitle, { marginTop: 20 }]}>
+          Check if password is leaked
+        </Text>
         <TextInput
           placeholder="Password"
           placeholderTextColor="#6B7280"
@@ -202,15 +219,25 @@ export default function LeakCheckScreen() {
           style={[leakStyles.input, { marginBottom: 14 }]}
         />
         <TouchableOpacity
-          style={[homeStyles.addButton, {marginBottom: 5}, submittingPasswordCheck && { opacity: 0.6 }]}
+          style={[
+            homeStyles.addButton,
+            { marginBottom: 5 },
+            submittingPasswordCheck && { opacity: 0.6 },
+          ]}
           onPress={checkPasswordLeaks}
           disabled={submittingPasswordCheck}
         >
-          {submittingPasswordCheck ? <ActivityIndicator color="#fff" /> : <Text style={homeStyles.addButtonText}>Check</Text>}
+          {submittingPasswordCheck ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={homeStyles.addButtonText}>Check</Text>
+          )}
         </TouchableOpacity>
         {passwordLeaked !== null && (
           <Text style={leakStyles.successText}>
-            {passwordLeaked ? "⚠️ Password was found in leaks!" : "✅ Password is safe"}
+            {passwordLeaked
+              ? "⚠️ Password was found in leaks!"
+              : "✅ Password is safe"}
           </Text>
         )}
 
@@ -219,16 +246,27 @@ export default function LeakCheckScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[homeStyles.addButton, {backgroundColor: "#a10964ff"}, (!canAddCredentials || submitting) && { opacity: 0.6 }]}
+          style={[
+            homeStyles.addButton,
+            { backgroundColor: "#a10964ff" },
+            (!canAddCredentials || submitting) && { opacity: 0.6 },
+          ]}
           onPress={addCredentials}
           disabled={!canAddCredentials || submitting}
         >
-          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={homeStyles.addButtonText}>＋ Add credentials</Text>}
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={homeStyles.addButtonText}>＋ Add credentials</Text>
+          )}
         </TouchableOpacity>
 
         {error && <Text style={leakStyles.errorText}>{error}</Text>}
-        {success && <Text style={leakStyles.successText}>✅ Credentials added successfully</Text>}
-
+        {success && (
+          <Text style={leakStyles.successText}>
+            ✅ Credentials added successfully
+          </Text>
+        )}
       </ScrollView>
     </View>
   );
