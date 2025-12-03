@@ -19,7 +19,8 @@ import {
 } from "@/components/vault";
 import { globalStyles } from "@/styles/global";
 import { homeStyles } from "@/styles/home";
-import { getToken, logout } from "@/utils/auth";
+import { logout } from "@/utils/auth";
+import { get } from "@/utils/requests";
 
 export type VaultItem = {
   encrypted_password: string;
@@ -51,17 +52,8 @@ export default function VaultScreen() {
       setLoading(true);
       setError(null);
 
-      const token = await getToken();
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/vault/items",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await get("vault/items");
+
       if (!response.ok) {
         if (response.status == 401) {
           logout(router);

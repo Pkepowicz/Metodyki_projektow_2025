@@ -5,6 +5,7 @@ import {
   setVaultKey,
   stretchedMasterKey,
 } from "@/utils/encryption";
+import { post } from "@/utils/requests";
 import CryptoJS from "crypto-js";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -43,20 +44,17 @@ export default function RegisterScreen() {
       setVaultKey(symmetric_key.toString(CryptoJS.enc.Hex));
 
       // Registration request
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/auth/register",
+      const response = await post(
+        "auth/register",
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            auth_hash,
-            protected_vault_key: encrypted_vault_key,
-            protected_vault_key_iv: encrypted_vault_key_iv.toString(
-              CryptoJS.enc.Hex
-            ),
-          }),
-        }
+          email,
+          auth_hash,
+          protected_vault_key: encrypted_vault_key,
+          protected_vault_key_iv: encrypted_vault_key_iv.toString(
+            CryptoJS.enc.Hex
+          ),
+        },
+        false
       );
 
       if (!response.ok) {

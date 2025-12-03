@@ -11,7 +11,7 @@ import {
 
 import { homeStyles } from "@/styles/home";
 import { leakStyles } from "@/styles/leakchecker";
-import { getToken } from "@/utils/auth";
+import { post } from "@/utils/requests";
 
 export default function LeakCheckScreen() {
   const [email, setEmail] = useState("");
@@ -49,23 +49,11 @@ export default function LeakCheckScreen() {
       setError(null);
       setSuccess(false);
 
-      const token = await getToken();
-
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/vault/items",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            site: email.trim(),
-            user: "",
-            password: passwordToCheck,
-          }),
-        }
-      );
+      const response = await post("vault/items", {
+        site: email.trim(),
+        user: "",
+        password: passwordToCheck,
+      });
 
       if (!response.ok) {
         throw new Error("Failed to add credentials");
@@ -91,19 +79,7 @@ export default function LeakCheckScreen() {
       setSubmittingEmail(true);
       setError(null);
 
-      const token = await getToken();
-
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/leaks/email/check",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ email: email.trim() }),
-        }
-      );
+      const response = await post("leaks/email/check", { email: email.trim() });
 
       if (!response.ok) {
         throw new Error("Failed to check email");
@@ -128,20 +104,11 @@ export default function LeakCheckScreen() {
       setSubmittingPasswordCheck(true);
       setError(null);
 
-      const token = await getToken();
       const password_hash = CryptoJS.SHA1(passwordToCheck).toString();
 
-      const response = await fetch(
-        "https://leakchecker.mwalas.pl/api/v1/leaks/password/check",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ password: password_hash }),
-        }
-      );
+      const response = await post("leaks/password/check", {
+        password: password_hash,
+      });
 
       if (!response.ok) {
         throw new Error("Failed to check password");

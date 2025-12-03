@@ -2,6 +2,7 @@ import { calculateMasterKey } from "@/utils/encryption";
 import { get_key_value, remove_key, set_key_value } from "@/utils/storage";
 import CryptoJS from "crypto-js";
 import { Router } from "expo-router";
+import { post } from "./requests";
 
 export function getAuthHash(
   master_key: CryptoJS.lib.WordArray,
@@ -49,17 +50,15 @@ export async function login(
     const master_key = calculateMasterKey(email, password);
     const auth_hash = getAuthHash(master_key, password);
 
-    const response = await fetch(
-      "https://leakchecker.mwalas.pl/api/v1/auth/login",
+    const response = await post(
+      "auth/login",
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          auth_hash,
-        }),
-      }
+        email,
+        auth_hash,
+      },
+      false
     );
+
     if (!response.ok) {
       const error = await response.json();
       throw Error(error.message || "Invalid credentials");

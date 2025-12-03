@@ -1,9 +1,21 @@
 import { Section, VaultItem } from "@/app/home/vault";
 import { ComStyles } from "@/styles/components";
 import { getToken } from "@/utils/auth";
-import { decryptVaultPassword, encryptVaultPassword, getVaultKey } from "@/utils/encryption";
+import {
+  decryptVaultPassword,
+  encryptVaultPassword,
+  getVaultKey,
+} from "@/utils/encryption";
+import { post } from "@/utils/requests";
 import { useEffect, useState } from "react";
-import { Modal, Pressable, Text, TextInput, View, TouchableOpacity } from "react-native";
+import {
+  Modal,
+  Pressable,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 function PasswordCard({
   item,
@@ -22,7 +34,7 @@ function PasswordCard({
       try {
         var password = await decryptVaultPassword(item.encrypted_password);
         if (!password) {
-          password = 'Could not decrypt. Probably the master key is wrong';
+          password = "Could not decrypt. Probably the master key is wrong";
         }
         setPasswordDecrypted(password);
       } catch (error) {
@@ -155,24 +167,16 @@ export function AddPasswordModal({
       const vault_key = getVaultKey();
 
       if (vault_key == null) {
-        setErrorMessage("Master key not set. This should not have happened. No idea what to do now to be honest...");
+        setErrorMessage(
+          "Master key not set. This should not have happened. No idea what to do now to be honest..."
+        );
       } else {
         const encryptedPassword = await encryptVaultPassword(newPassword);
 
-        const response = await fetch(
-          "https://leakchecker.mwalas.pl/api/v1/vault/items",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              site: newSite,
-              encrypted_password: encryptedPassword,
-            }),
-          }
-        );
+        const response = await post("vault/items", {
+          site: newSite,
+          encrypted_password: encryptedPassword,
+        });
 
         if (!response.ok) {
           setErrorMessage("Error:" + response.text());
@@ -267,7 +271,7 @@ export function EditPasswordModal({
       try {
         var password = await decryptVaultPassword(item.encrypted_password);
         if (!password) {
-          password = 'Could not decrypt. Probably the master key is wrong';
+          password = "Could not decrypt. Probably the master key is wrong";
         }
         setPasswordDecrypted(password);
       } catch (error) {
@@ -281,43 +285,43 @@ export function EditPasswordModal({
   return (
     <Modal visible={true} transparent>
       <View style={ComStyles.modalOverlay}>
-      <View style={ComStyles.modalContainer}>
-        <Text style={ComStyles.modalTitle}>Edit Entry</Text>
+        <View style={ComStyles.modalContainer}>
+          <Text style={ComStyles.modalTitle}>Edit Entry</Text>
 
-        <TextInput
-          value={user}
-          onChangeText={setUser}
-          placeholder="Domain" 
-          placeholderTextColor="#6B7280"
-          style={ComStyles.modalInput}
-        />
+          <TextInput
+            value={user}
+            onChangeText={setUser}
+            placeholder="Domain"
+            placeholderTextColor="#6B7280"
+            style={ComStyles.modalInput}
+          />
 
-        <TextInput
-          value={passwordDecrypted}
-          onChangeText={setPasswordDecrypted}
-          placeholder="Password"
-          placeholderTextColor="#6B7280"
-          secureTextEntry
-          style={ComStyles.modalInput}
-        />
+          <TextInput
+            value={passwordDecrypted}
+            onChangeText={setPasswordDecrypted}
+            placeholder="Password"
+            placeholderTextColor="#6B7280"
+            secureTextEntry
+            style={ComStyles.modalInput}
+          />
 
-        <View style={ComStyles.modalButtons}>
-          <TouchableOpacity
-            style={[ComStyles.button, ComStyles.saveButton]}
-            onPress={() => onSave(item, user, passwordDecrypted)}
-          >
-            <Text style={ComStyles.buttonText}>Save</Text>
-          </TouchableOpacity>
+          <View style={ComStyles.modalButtons}>
+            <TouchableOpacity
+              style={[ComStyles.button, ComStyles.saveButton]}
+              onPress={() => onSave(item, user, passwordDecrypted)}
+            >
+              <Text style={ComStyles.buttonText}>Save</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[ComStyles.button, ComStyles.cancelButton]}
-            onPress={onClose}
-          >
-            <Text style={ComStyles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[ComStyles.button, ComStyles.cancelButton]}
+              onPress={onClose}
+            >
+              <Text style={ComStyles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
     </Modal>
   );
 }
@@ -334,30 +338,42 @@ export function DeleteConfirmModal({
   return (
     <Modal visible={true} transparent>
       <View style={ComStyles.modalOverlay}>
-      <View style={[ComStyles.modalContainer, { alignItems: "center", width: "80%" }]}>
-        <Text style={ComStyles.modalTitle}>Delete this entry?</Text>
+        <View
+          style={[
+            ComStyles.modalContainer,
+            { alignItems: "center", width: "80%" },
+          ]}
+        >
+          <Text style={ComStyles.modalTitle}>Delete this entry?</Text>
 
-        <Text style={{ marginVertical: 10, textAlign: "center" }}>
-          {item.site} {item.user}
-        </Text>
+          <Text style={{ marginVertical: 10, textAlign: "center" }}>
+            {item.site} {item.user}
+          </Text>
 
-        <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", marginTop: 20 }}>
-          <TouchableOpacity
-            style={[ComStyles.button, { backgroundColor: "#DC2626" }]}
-            onPress={() => onConfirm(item)}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              width: "100%",
+              marginTop: 20,
+            }}
           >
-            <Text style={ComStyles.buttonText}>Delete</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[ComStyles.button, { backgroundColor: "#DC2626" }]}
+              onPress={() => onConfirm(item)}
+            >
+              <Text style={ComStyles.buttonText}>Delete</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[ComStyles.button, ComStyles.cancelButton]}
-            onPress={onCancel}
-          >
-            <Text style={ComStyles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[ComStyles.button, ComStyles.cancelButton]}
+              onPress={onCancel}
+            >
+              <Text style={ComStyles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
     </Modal>
   );
 }
