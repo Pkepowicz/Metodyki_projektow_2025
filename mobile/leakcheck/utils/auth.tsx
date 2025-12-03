@@ -73,7 +73,7 @@ export async function login(
     set_key_value("token", token);
 
     // Get vault key
-    const response_vault_key = await get("auth/vault-key");
+    const response_vault_key = await get("auth/vault-key"); // TODO
     if (!response_vault_key.ok) {
       const error = await response_vault_key.json();
       throw Error("Error " + response_vault_key.status + " " + error.detail);
