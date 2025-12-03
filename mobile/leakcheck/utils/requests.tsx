@@ -34,7 +34,7 @@ export async function post(
  */
 export async function get(apiRoute: string): Promise<Response> {
   const token = await getToken();
-  return fetch("https://leakchecker.mwalas.pl/api/v1/vault/items", {
+  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
