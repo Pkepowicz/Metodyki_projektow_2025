@@ -1,8 +1,12 @@
-import { calculateMasterKey } from "@/utils/encryption";
+import {
+  calculateMasterKey,
+  setVaultKey,
+  stretchedMasterKey,
+} from "@/utils/encryption";
 import { get_key_value, remove_key, set_key_value } from "@/utils/storage";
 import CryptoJS from "crypto-js";
 import { Router } from "expo-router";
-import { post } from "./requests";
+import { get, post } from "./requests";
 
 export function getAuthHash(
   master_key: CryptoJS.lib.WordArray,
@@ -61,12 +65,31 @@ export async function login(
 
     if (!response.ok) {
       const error = await response.json();
-      throw Error(error.message || "Invalid credentials");
+      throw Error(error.detail || "Invalid credentials");
     }
 
     const data = await response.json();
     const token = data.access_token;
     set_key_value("token", token);
+
+    // Get vault key
+    const response_vault_key = await get("auth/vault-key");
+    if (!response_vault_key.ok) {
+      const error = await response_vault_key.json();
+      throw Error("Error " + response_vault_key.status + " " + error.detail);
+    }
+    const data_vault_key = await response_vault_key.json();
+    const encrypted_vault_key = data_vault_key.protected_vault_key;
+    const encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
+
+    // Decrypt and set vault key
+    const stretched_master_key = stretchedMasterKey(master_key);
+    const symmetric_key = CryptoJS.AES.decrypt(
+      encrypted_vault_key,
+      stretched_master_key,
+      { iv: encrypted_vault_key_iv }
+    );
+    setVaultKey(symmetric_key.toString(CryptoJS.enc.Hex));
 
     router.replace("/home/vault");
     return token;
