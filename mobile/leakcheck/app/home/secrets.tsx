@@ -3,9 +3,10 @@ import { leakStyles } from "@/styles/leakchecker";
 import { post } from "@/utils/requests";
 import { copyToClipboard } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   ScrollView,
   Text,
   TextInput,
@@ -18,6 +19,7 @@ export default function SecretsScreen() {
   const [link, setLink] = useState<string>("");
   const [gettingLink, setGettingLink] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [copied, setCopied] = useState(false);
 
   async function getSecretLink() {
     setErrorMessage("");
@@ -50,6 +52,30 @@ export default function SecretsScreen() {
     setGettingLink(false);
   }
 
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!link) return;
+
+    Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 1.02,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [link]);
+
+  async function handleCopy() {
+    await copyToClipboard(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500); // reset after 1.5s
+  }
+
   return (
     <View style={homeStyles.container}>
       <ScrollView keyboardShouldPersistTaps="handled">
@@ -75,7 +101,7 @@ export default function SecretsScreen() {
               ]}
               multiline
               textAlignVertical="top"
-            ></TextInput>
+            />
 
             <TouchableOpacity
               style={[
@@ -94,20 +120,52 @@ export default function SecretsScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={{ marginTop: 20 }}>
-            <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
-              Your Link:
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ flex: 1 }}>{link}</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  copyToClipboard(link);
-                }}
-              >
-                <Ionicons name="copy-outline" size={22} />
-              </TouchableOpacity>
-            </View>
+          <View>
+            <Animated.View
+              style={{
+                transform: [{ scale }],
+                backgroundColor: "white",
+                padding: 14,
+                borderRadius: 10,
+                marginTop: 50,
+                marginBottom: 40,
+                marginHorizontal: 20,
+                shadowColor: "#000000ff",
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+                elevation: 3,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 14,
+                    color: "#6f6f6fff",
+                  }}
+                  numberOfLines={1}
+                >
+                  {link}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    copyToClipboard(link);
+                    handleCopy();
+                  }}
+                >
+                  {copied ? (
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={22}
+                      color="green"
+                    />
+                  ) : (
+                    <Ionicons name="copy-outline" size={22} color="#555" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
 
             <View>
               <TouchableOpacity
