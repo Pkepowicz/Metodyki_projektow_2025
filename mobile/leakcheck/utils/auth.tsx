@@ -73,19 +73,24 @@ export async function login(
     set_key_value("token", token);
 
     // Get vault key
-    const response_vault_key = await get("auth/vault-key"); // TODO
+    const response_vault_key = await get("auth/vault-key");
     if (!response_vault_key.ok) {
       const error = await response_vault_key.json();
       throw Error("Error " + response_vault_key.status + " " + error.detail);
     }
     const data_vault_key = await response_vault_key.json();
-    const encrypted_vault_key = data_vault_key.protected_vault_key;
-    const encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
+    var encrypted_vault_key = data_vault_key.protected_vault_key;
+    var encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
 
     // Decrypt and set vault key
     const stretched_master_key = stretchedMasterKey(master_key);
+    encrypted_vault_key = CryptoJS.enc.Base64.parse(encrypted_vault_key);
+    encrypted_vault_key_iv = CryptoJS.enc.Hex.parse(encrypted_vault_key_iv);
+
     const symmetric_key = CryptoJS.AES.decrypt(
-      encrypted_vault_key,
+      CryptoJS.lib.CipherParams.create({
+        ciphertext: encrypted_vault_key,
+      }),
       stretched_master_key,
       { iv: encrypted_vault_key_iv }
     );
