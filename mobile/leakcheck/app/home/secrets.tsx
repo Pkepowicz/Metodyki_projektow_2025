@@ -1,10 +1,11 @@
 import { homeStyles } from "@/styles/home";
-import { settingsStyle } from "@/styles/settings";
+import { leakStyles } from "@/styles/leakchecker";
 import { post } from "@/utils/requests";
 import { copyToClipboard } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TextInput,
@@ -15,19 +16,38 @@ import {
 export default function SecretsScreen() {
   const [message, setMessage] = useState<string>("");
   const [link, setLink] = useState<string>("");
+  const [gettingLink, setGettingLink] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   async function getSecretLink() {
+    setErrorMessage("");
+    if (!message) {
+      setErrorMessage("Message is empty");
+      return;
+    }
+    setGettingLink(true);
+
+    // TODO: mock, delete later
+    const MOCK = true;
+    if (MOCK) {
+      setLink("https://secretlink.com/te$T");
+      setGettingLink(false);
+      return;
+    }
+
     const response = await post("/secrets", {
       message: message,
     });
     if (!response.ok) {
       const error = await response.json();
-      setErrorMessage("Error " + error.detail);
+      setErrorMessage("Error: " + error.detail);
+      setGettingLink(false);
+      return;
     }
     const data = await response.json();
 
     setLink(data.link);
+    setGettingLink(false);
   }
 
   return (
@@ -38,22 +58,42 @@ export default function SecretsScreen() {
           Write a secret message and share.
         </Text>
 
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Your secret message"
-          style={[settingsStyle.input, { height: 60, paddingTop: 10 }]}
-          multiline
-          textAlignVertical="top"
-        ></TextInput>
+        {errorMessage && (
+          <Text style={leakStyles.errorText}>{errorMessage}</Text>
+        )}
 
-        {errorMessage && <Text style={homeStyles.error}>{errorMessage}</Text>}
+        {link == "" ? (
+          <View>
+            <TextInput
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Your secret message"
+              placeholderTextColor="#6B7280"
+              style={[
+                leakStyles.input,
+                { height: 100, paddingVertical: 10, marginBottom: 30 },
+              ]}
+              multiline
+              textAlignVertical="top"
+            ></TextInput>
 
-        <TouchableOpacity onPress={getSecretLink}>
-          <Text>Get a link</Text>
-        </TouchableOpacity>
-
-        {link && (
+            <TouchableOpacity
+              style={[
+                homeStyles.addButton,
+                { marginBottom: 5 },
+                gettingLink && { opacity: 0.6 },
+              ]}
+              onPress={getSecretLink}
+              disabled={gettingLink}
+            >
+              {gettingLink ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={homeStyles.addButtonText}>Get a link</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
           <View style={{ marginTop: 20 }}>
             <Text style={{ fontWeight: "bold", marginBottom: 6 }}>
               Your Link:
@@ -66,6 +106,19 @@ export default function SecretsScreen() {
                 }}
               >
                 <Ionicons name="copy-outline" size={22} />
+              </TouchableOpacity>
+            </View>
+
+            <View>
+              <TouchableOpacity
+                style={homeStyles.addButton}
+                onPress={() => {
+                  setLink("");
+                }}
+              >
+                <Text style={homeStyles.addButtonText}>
+                  Create a new secret
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
