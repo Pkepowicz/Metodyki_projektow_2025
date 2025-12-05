@@ -43,13 +43,18 @@ export function ChangePasswordModal({
         <View style={ComStyles.modalContainer}>
           <Text style={ComStyles.modalTitle}>Change password</Text>
 
-          {errorMessage && (
-            <Text style={ComStyles.errorText}>{errorMessage}</Text>
-          )}
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor="#6B7280"
+            value={email}
+            onChangeText={setEmail}
+            style={ComStyles.modalInput}
+          />
 
           <TextInput
             placeholder="Old password"
             placeholderTextColor="#6B7280"
+            secureTextEntry
             value={oldPassword}
             onChangeText={setOldPassword}
             style={ComStyles.modalInput}
@@ -72,6 +77,12 @@ export function ChangePasswordModal({
             onChangeText={setConfirmPassword}
             style={ComStyles.modalInput}
           />
+
+          {errorMessage && (
+            <Text style={{ color: "red", textAlign: "center", marginTop: 20 }}>
+              {errorMessage}
+            </Text>
+          )}
 
           <View style={ComStyles.modalButtons}>
             <TouchableOpacity

@@ -3,16 +3,24 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import CryptoJS from "crypto-js";
 import { get_key_value, set_key_value } from "./storage";
 
-export async function encryptVaultPassword(password: string): Promise<string> {
-  const vault_key = await getVaultKey();
+export async function encryptVaultPassword(
+  password: string,
+  vault_key: string | null = null
+): Promise<string> {
+  if (!vault_key) {
+    vault_key = await getVaultKey();
+  }
   if (!vault_key) throw Error("Vault key not set");
   return CryptoJS.AES.encrypt(password, vault_key).toString();
 }
 
 export async function decryptVaultPassword(
-  encrypted_password: string
+  encrypted_password: string,
+  vault_key: string | null = null
 ): Promise<string> {
-  const vault_key = await getVaultKey();
+  if (!vault_key) {
+    vault_key = await getVaultKey();
+  }
   if (!vault_key) {
     throw Error("Error: Vault key not set");
   }
