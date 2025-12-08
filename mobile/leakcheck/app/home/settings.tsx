@@ -41,19 +41,18 @@ export default function SettingsScreen() {
     try {
       // Old
       const old_master_key = calculateMasterKey(email, oldPassword);
-      const old_stretched_master_key = stretchedMasterKey(old_master_key);
+      // const old_stretched_master_key = stretchedMasterKey(old_master_key);
       const old_auth_hash = getAuthHash(old_master_key, oldPassword);
       const old_symmetric_key = await getVaultKey();
       if (!old_symmetric_key) logout(router);
 
-      const response_vault_key = await get("auth/vault-key");
-      if (!response_vault_key.ok) {
-        const error = await response_vault_key.json();
-        throw Error("Invalid credentials");
-      }
-      const data_vault_key = await response_vault_key.json();
-      const old_encrypted_vault_key = data_vault_key.protected_vault_key;
-      const old_encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
+      // const response_vault_key = await get("auth/vault-key");
+      // if (!response_vault_key.ok) {
+      //   throw Error("Invalid credentials");
+      // }
+      // const vault_key_data = await response_vault_key.json();
+      // const old_encrypted_vault_key = vault_key_data.protected_vault_key;
+      // const old_encrypted_vault_key_iv = vault_key_data.protected_vault_key_iv;
 
       // New
       const master_key = calculateMasterKey(email, newPassword);
@@ -83,7 +82,8 @@ export default function SettingsScreen() {
           old_symmetric_key
         );
         const new_encrypted_password: string = await encryptVaultPassword(
-          old_password
+          old_password,
+          symmetric_key.toString(CryptoJS.enc.Hex) // new symmetric key
         );
         const new_item = {
           site: old_item.site,
@@ -92,7 +92,7 @@ export default function SettingsScreen() {
           encrypted_password: new_encrypted_password,
         };
 
-        new_items.push(items[item_index]);
+        new_items.push(new_item);
       }
 
       const response = await post("auth/change-password", {
@@ -107,7 +107,7 @@ export default function SettingsScreen() {
       if (!response.ok) {
         const error = await response.json();
         throw Error(
-          "Error " + response.status + " saving passwords: " + error.detail
+          "Error " + response.status + " changing password: " + error.detail
         );
       }
 
@@ -120,6 +120,8 @@ export default function SettingsScreen() {
       setErrorMessage(errorMessage);
     } finally {
       setSubmitting(false);
+      setModalVisible(false);
+      setErrorMessage("");
     }
   }
 
