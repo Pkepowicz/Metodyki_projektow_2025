@@ -7,6 +7,7 @@ import {
 } from "@/utils/encryption";
 import { post } from "@/utils/requests";
 import CryptoJS from "crypto-js";
+import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -33,8 +34,10 @@ export default function RegisterScreen() {
       const stretched_master_key = stretchedMasterKey(master_key);
       const auth_hash = getAuthHash(master_key, password); // KDF function
 
-      const symmetric_key = CryptoJS.lib.WordArray.random(32);
-      const encrypted_vault_key_iv = CryptoJS.lib.WordArray.random(16);
+      const symmetric_key_bytes = await Crypto.getRandomBytesAsync(32);
+      const symmetric_key = CryptoJS.lib.WordArray.create(symmetric_key_bytes);
+      const iv_bytes = await Crypto.getRandomBytesAsync(16);
+      const encrypted_vault_key_iv = CryptoJS.lib.WordArray.create(iv_bytes);
       const encrypted_vault_key = CryptoJS.AES.encrypt(
         symmetric_key,
         stretched_master_key,
