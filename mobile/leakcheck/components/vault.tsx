@@ -1,6 +1,5 @@
 import { Section, VaultItem } from "@/app/home/vault";
 import { ComStyles } from "@/styles/components";
-import { getToken } from "@/utils/auth";
 import {
   decryptVaultPassword,
   encryptVaultPassword,
@@ -163,7 +162,6 @@ export function AddPasswordModal({
   async function addItem() {
     try {
       setSubmitting(true);
-      const token = await getToken();
       const vault_key = getVaultKey();
 
       if (vault_key == null) {

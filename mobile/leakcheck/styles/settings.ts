@@ -50,7 +50,7 @@ export const settingsStyle = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-    logoutButtonText: {
+  logoutButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",

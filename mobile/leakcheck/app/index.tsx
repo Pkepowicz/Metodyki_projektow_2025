@@ -4,7 +4,6 @@ import { ActivityIndicator, View } from "react-native";
 
 import { LoginScreenComponent } from "@/components/auth";
 import { isEmailValid, login } from "@/utils/auth";
-import { getVaultKey } from "@/utils/encryption";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,19 +22,10 @@ export default function LoginScreen() {
         return;
       }
 
-      const vault_key = await getVaultKey()
-      console.log(vault_key)
-      if (vault_key == null) {
-        // TODO get endpoint
-        setErrorMessage("Tough luck mate, can't restore the vault key, because it's not implemented yet.\nCreate new user :)");
-        setIsLoading(false);
-        return;
-      }
-
       // Login
-      await login(email, password, router, setErrorMessage)
+      await login(email, password, router, setErrorMessage);
     } catch (error) {
-      setErrorMessage("Unable to log in. Programmers skill issue :(\n" + error)
+      setErrorMessage("Unable to log in. Programmers skill issue :(\n" + error);
     } finally {
       setIsLoading(false);
     }
@@ -43,20 +33,23 @@ export default function LoginScreen() {
 
   return (
     <>
-    {/* TODO ActivityIndicator not working on mobile?? */}
-    {isLoading
-      ? <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      {/* TODO ActivityIndicator not working on mobile?? */}
+      {isLoading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
           <ActivityIndicator size="large" color="#4151ddff" />
         </View>
-      : <LoginScreenComponent
-      handle_login={handleLogin}
-      email={email}
-      set_email={setEmail}
-      password={password}
-      set_password={setPassword}
-      error_message={errorMessage}
-      />
-    }
+      ) : (
+        <LoginScreenComponent
+          handle_login={handleLogin}
+          email={email}
+          set_email={setEmail}
+          password={password}
+          set_password={setPassword}
+          error_message={errorMessage}
+        />
+      )}
     </>
   );
 }
