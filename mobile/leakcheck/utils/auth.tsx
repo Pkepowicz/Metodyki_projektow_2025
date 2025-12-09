@@ -81,6 +81,7 @@ export async function login(
     const data_vault_key = await response_vault_key.json();
     var encrypted_vault_key = data_vault_key.protected_vault_key;
     var encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
+    set_key_value("iv", encrypted_vault_key_iv);
 
     // Decrypt and set vault key
     const stretched_master_key = stretchedMasterKey(master_key);
