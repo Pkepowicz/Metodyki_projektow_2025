@@ -9,6 +9,7 @@ Supports:
     - email leak check
     - password leak check (via SHA-1 hash)
     - fetching protected vault key (protected_vault_key + protected_vault_key_iv)
+    - refresh token flow
 
 Usage examples:
     python test.py register
@@ -21,6 +22,7 @@ Usage examples:
     python test.py leaks-email
     python test.py leaks-password
     python test.py vault-key
+    python test.py refresh
 """
 
 import argparse
@@ -108,7 +110,13 @@ def register(session: requests.Session, register_url: str, email: str, master_pa
             print("[+] No response body.")
 
 
-def login(session: requests.Session, login_url: str, email: str, master_password: str) -> Optional[str]:
+def login(session: requests.Session, login_url: str, email: str, master_password: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Log in a user, set the Authorization header on the session, and return both the access and refresh tokens.
+
+    Returns:
+        (access_token, refresh_token), each possibly None if not present.
+    """
     auth_hash = derive_auth_hash(master_password)
 
     payload = {
@@ -119,23 +127,29 @@ def login(session: requests.Session, login_url: str, email: str, master_password
     print(f"\n[*] Logging in user {email} …")
     resp = session.post(login_url, json=payload)
     print(f"[+] Status: {resp.status_code}")
-    token = None
+
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+
     try:
         data = resp.json()
         print("[+] Response JSON:", data)
-        token = data.get("access_token")
+        access_token = data.get("access_token")
+        refresh_token = data.get("refresh_token")
     except Exception:
         if resp.text:
             print("[+] Response text:", resp.text)
         else:
             print("[+] No response body.")
 
-    if token:
-        session.headers.update({"Authorization": f"Bearer {token}"})
+    if access_token:
+        session.headers.update({"Authorization": f"Bearer {access_token}"})
         print("[+] Authorization header set on session.")
-        return token
 
-    return None
+    if refresh_token:
+        print(f"[+] Refresh token: {refresh_token}")
+
+    return access_token, refresh_token
 
 
 def test_vault(session: requests.Session, base_url: str, do_post: bool = True, do_get: bool = True) -> None:
@@ -300,12 +314,73 @@ def test_vault_key(session: requests.Session, base_url: str) -> None:
             print("[+] No response body.")
 
 
+def test_refresh_flow(session: requests.Session, base_url: str, email: str, master_password: str) -> None:
+    """
+    Test of the refresh token flow.
+
+    STEPS:
+        1. Log in and obtain (access_token, refresh_token).
+        2. Call a protected endpoint with the access token.
+        3. Call POST /auth/refresh with the refresh token.
+        4. Update Authorization header with the new access token.
+        5. Call the protected endpoint again.
+    """
+    login_url = f"{base_url}/auth/login"
+    refresh_url = f"{base_url}/auth/refresh"
+    vault_items_url = f"{base_url}/vault/items"
+
+    access_token, refresh_token = login(session, login_url, email, master_password)
+
+    if not access_token or not refresh_token:
+        print("[!] Could not obtain both access and refresh tokens; aborting refresh test.")
+        return
+
+    print("\n[*] Calling protected endpoint with initial access token …")
+    resp = session.get(vault_items_url)
+    print(f"[+] GET {vault_items_url} -> {resp.status_code}")
+    try:
+        print("[+] Response JSON:", resp.json())
+    except Exception:
+        print("[+] Raw response text:", resp.text)
+
+    payload = {"refresh_token": refresh_token}
+    print(f"\n[*] Calling /auth/refresh with refresh_token …")
+    resp = session.post(refresh_url, json=payload)
+    print(f"[+] POST {refresh_url} -> {resp.status_code}")
+
+    new_access_token: Optional[str] = None
+    new_refresh_token: Optional[str] = None
+    try:
+        data = resp.json()
+        print("[+] Response JSON:", data)
+        new_access_token = data.get("access_token")
+        new_refresh_token = data.get("refresh_token")
+    except Exception:
+        print("[+] Raw response text:", resp.text)
+
+    if not new_access_token or not new_refresh_token:
+        print("[!] Did not receive both new access and refresh tokens; aborting refresh test.")
+        return
+
+    session.headers.update({"Authorization": f"Bearer {new_access_token}"})
+    print("[+] Authorization header updated with new access token.")
+    print(f"[+] New refresh token: {new_refresh_token}")
+
+    print("\n[*] Calling protected endpoint with refreshed access token …")
+    resp = session.get(vault_items_url)
+    print(f"[+] GET {vault_items_url} -> {resp.status_code}")
+    try:
+        print("[+] Response JSON:", resp.json())
+    except Exception:
+        print("[+] Raw response text:", resp.text)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
         choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",  "change-password",
-                 "leaks-email", "leaks-password", "vault-key"],
+                 "leaks-email", "leaks-password", "vault-key", "refresh"],
         help="What to do.",
     )
     parser.add_argument(
@@ -468,6 +543,8 @@ def main():
             return
 
         test_vault_key(session, base_url)
+    elif args.action == "refresh":
+        test_refresh_flow(session=session, base_url=base_url, email=args.email, master_password=args.password)
 
 
 if __name__ == "__main__":

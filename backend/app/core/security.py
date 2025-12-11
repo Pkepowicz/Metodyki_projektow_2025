@@ -1,3 +1,6 @@
+import secrets
+import hashlib
+
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import jwt
@@ -35,3 +38,15 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+def generate_refresh_token() -> str:
+    """
+    Generate a random opaque refresh token value that will be given to the client.
+    This raw value is NEVER stored in the database, only its hash is.
+    """
+    return secrets.token_urlsafe(32)
+
+
+def hash_refresh_token(token: str) -> str:
+    """Deterministically hash the refresh token using SHA-256"""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

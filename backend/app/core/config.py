@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str
     TOKEN_EXPIRATION_MIN: int
+    REFRESH_TOKEN_EXPIRATION_DAYS: int = 7
 
     XPOSEDORNOT_API_URL: str = "https://api.xposedornot.com/v1"
     XPOSEDORNOT_TIMEOUT_SECONDS: float = 30.0

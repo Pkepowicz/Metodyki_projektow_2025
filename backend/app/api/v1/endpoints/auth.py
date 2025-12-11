@@ -5,9 +5,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.base import get_db
 from app.db.models import User
 from app.schemas.user import UserCreate, UserLogin, ChangePasswordAndRotatePayload, ProtectedVaultKey
-from app.schemas.token import Token
+from app.schemas.token import Token, RefreshRequest
 from app.crud import user as crud_user, vault as crud_vault
-from app.core.security import verify_password, create_access_token
+from app.crud import refresh_token as crud_refresh_token
+from app.core.security import verify_password, create_access_token, generate_refresh_token
 from app.core.deps import get_current_user
 
 router = APIRouter()
@@ -61,7 +62,44 @@ def login_user(user: UserLogin, db: Session = Depends(get_db)):
                             headers={"WWW-Authenticate": "Bearer"})
 
     access_token = create_access_token(data={"sub": db_user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    raw_refresh_token = generate_refresh_token()
+    crud_refresh_token.create_refresh_token(db, db_user, raw_refresh_token)
+
+    return {"access_token": access_token, "token_type": "bearer", "refresh_token": raw_refresh_token}
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_tokens(payload: RefreshRequest, db: Session = Depends(get_db)) -> Token:
+    """
+    Exchange a refresh token for a new access token and a rotated refresh token.
+
+    Raises:
+        HTTPException: With Status 401 if the token does not exist or is expired
+        HTTPException: With Status 500 on database error
+
+    Returns:
+        Response: New JWT access token along with a new refresh token.
+    """
+    token_record = crud_refresh_token.get_valid_refresh_token(db, payload.refresh_token)
+    if token_record is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+    user = token_record.user
+
+    try:
+        crud_refresh_token.delete_refresh_token(db, token_record)
+
+        new_access_token = create_access_token({'sub': user.email})
+        new_raw_refresh_token = generate_refresh_token()
+        crud_refresh_token.create_refresh_token(db, user, new_raw_refresh_token)
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail='Could not refresh token. Please try again.')
+
+    return Token(access_token=new_access_token, token_type='bearer',  refresh_token=new_raw_refresh_token)
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
