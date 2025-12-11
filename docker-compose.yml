@@ -7,7 +7,16 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      sh -c "
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
+        while true; do
+          echo '[cleanup] Running refresh token cleanup...';
+          python -m app.maintenance.cleanup_refresh_tokens;
+          echo '[cleanup] Sleeping for 24h...';
+          sleep 86400;
+        done
+      "
     depends_on:
       db:
         condition: service_healthy
