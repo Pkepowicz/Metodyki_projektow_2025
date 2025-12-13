@@ -10,7 +10,7 @@ def generate_unique_token(length: int = 32) -> str:
     """Generate a cryptographically secure random token for secret sharing links.
     
     Args:
-        length: Number of characters in the token (default 32 for high entropy).
+        length: Number of bytes in the token (default 32 for high entropy).
     
     Returns:
         A URL-safe random token string.
