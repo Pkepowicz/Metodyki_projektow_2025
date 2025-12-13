@@ -40,7 +40,7 @@ def create_secret(db: Session, owner_id: int, secret: SecretCreate) -> models.Se
         max_accesses=secret.max_accesses,
         remaining_accesses=secret.max_accesses,
         expires_at=expires_at,
-        is_revoked=0,
+        is_revoked=False,
         password_hash=password_hash
     )
     db.add(db_secret)
@@ -139,7 +139,7 @@ def revoke_secret(db: Session, secret: models.Secret) -> models.Secret:
     Returns:
         The updated Secret model instance.
     """
-    secret.is_revoked = 1
+    secret.is_revoked = True
     db.add(secret)
     db.commit()
     db.refresh(secret)

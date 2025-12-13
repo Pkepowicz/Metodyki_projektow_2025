@@ -20,7 +20,7 @@ class SecretResponse(BaseModel):
     remaining_accesses: int
     created_at: datetime
     expires_at: datetime
-    is_revoked: int
+    is_revoked: bool
 
     class Config:
         orm_mode = True
