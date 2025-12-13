@@ -20,9 +20,11 @@ import {
 import { globalStyles } from "@/styles/global";
 import { homeStyles } from "@/styles/home";
 import { logout } from "@/utils/auth";
-import { get } from "@/utils/requests";
+import { get, put, del } from "@/utils/requests";
+import { encryptVaultPassword } from "@/utils/encryption";
 
 export type VaultItem = {
+  id: number;
   encrypted_password: string;
   user: string;
   site: string;
@@ -103,25 +105,43 @@ export default function VaultScreen() {
     );
   }
 
-  async function saveEdit(
-    oldItem: VaultItem,
-    newUser: string,
-    newPassword: string
-  ) {
-    // TODO: call API PUT here
-    console.log("update", oldItem, newUser, newPassword);
+
+async function saveEdit(oldItem: VaultItem, newUser: string, newPassword: string) {
+  try {
+
+    const encryptedPassword = await encryptVaultPassword(newPassword);
+
+    const response = await put(`vault/items/${oldItem.id}`, {
+      site: newUser, 
+      encrypted_password: encryptedPassword,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update item: ${response.status}`);
+    }
 
     setEditItem(null);
-    loadItems();
+    await loadItems(); 
+  } catch (err: any) {
+    alert("Error updating item: " + err.message);
   }
+}
 
-  async function confirmDelete(item: VaultItem) {
-    // TODO: call API DELETE here
-    console.log("delete", item);
+async function confirmDelete(item: VaultItem) {
+  try {
+
+    const response = await del(`vault/items/${item.id}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete item: ${response.status}`);
+    }
 
     setDeleteItem(null);
-    loadItems();
+    await loadItems();
+  } catch (err: any) {
+    alert("Error deleting item: " + err.message);
   }
+}
 
   return (
     <View style={homeStyles.container}>

@@ -12,6 +12,8 @@ import {
 import { homeStyles } from "@/styles/home";
 import { leakStyles } from "@/styles/leakchecker";
 import { post } from "@/utils/requests";
+import GeneratePasswordModal from "@/components/generate_password";
+import { encryptVaultPassword } from "@/utils/encryption"; 
 
 export default function LeakCheckScreen() {
   const [email, setEmail] = useState("");
@@ -21,6 +23,7 @@ export default function LeakCheckScreen() {
   const [passwordToCheck, setPasswordToCheck] = useState("");
   const [submittingPasswordCheck, setSubmittingPasswordCheck] = useState(false);
   const [passwordLeaked, setPasswordLeaked] = useState<boolean | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,19 +52,23 @@ export default function LeakCheckScreen() {
       setError(null);
       setSuccess(false);
 
+      const encryptedPassword = await encryptVaultPassword(passwordToCheck);
+
       const response = await post("vault/items", {
-        site: email.trim(),
-        user: "",
-        password: passwordToCheck,
-      });
+      site: email.trim(),
+      user: "",
+      encrypted_password: encryptedPassword,
+    });
 
       if (!response.ok) {
         throw new Error("Failed to add credentials");
       }
 
-      setPasswordToCheck("");
       setEmail("");
+      setPasswordToCheck("");
       setSuccess(true);
+
+      // await loadItems();
     } catch (err: any) {
       setError(err.message ?? "Unknown error");
     } finally {
@@ -136,6 +143,7 @@ export default function LeakCheckScreen() {
 
         <TouchableOpacity
           style={[homeStyles.addButton, { backgroundColor: "#a10964ff" }]}
+          onPress={() => setModalVisible(true)}
         >
           <Text style={homeStyles.addButtonText}>Generate password</Text>
         </TouchableOpacity>
@@ -182,7 +190,7 @@ export default function LeakCheckScreen() {
           placeholderTextColor="#6B7280"
           value={passwordToCheck}
           onChangeText={setPasswordToCheck}
-          secureTextEntry
+          secureTextEntry={false}
           style={[leakStyles.input, { marginBottom: 14 }]}
         />
         <TouchableOpacity
@@ -235,6 +243,11 @@ export default function LeakCheckScreen() {
           </Text>
         )}
       </ScrollView>
+      <GeneratePasswordModal
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          onSave={(generatedPassword: string) => setPasswordToCheck(generatedPassword)}
+        />
     </View>
   );
 }
