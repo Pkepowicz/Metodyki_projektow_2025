@@ -4,25 +4,44 @@ Simple test client for FastAPI backend.
 Supports:
     - user registration
     - user login
-    - vault operations (POST/GET)
+    - vault operations (POST/GET/PUT/DELETE)
     - password change with vault rotation
     - email leak check
     - password leak check (via SHA-1 hash)
     - fetching protected vault key (protected_vault_key + protected_vault_key_iv)
     - refresh token flow
+    - secrets sharing (create, access, list, revoke)
 
 Usage examples:
+    # Auth operations
     python test.py register
     python test.py login
-    python test.py both (register and login)
+    python test.py both
+    python test.py change-password --new-password "NewPass123!"
+    
+    # Vault operations
     python test.py vault-post
     python test.py vault-get
     python test.py vault-both
-    python test.py change-password --new-password "NewPass123!"
+    python test.py vault-put
+    python test.py vault-delete
+    python test.py vault-key
+    
+    # Secrets sharing
+    python test.py secret-create --secret-content "My secret message" --max-access 3 --expires 3600
+    python test.py secret-create --secret-content "Protected secret" --secret-password "pass123" --max-access 2
+    python test.py secret-list
+    python test.py secret-access --token <token>
+    python test.py secret-access --token <token> --secret-password "pass123"
+    python test.py secret-revoke --secret-id <id>
+    
+    # Leak checks
     python test.py leaks-email
+    python test.py leaks-email --check-email other@example.com
     python test.py leaks-password
     python test.py vault-key
     python test.py refresh
+    python test.py leaks-password --check-password SomePassword123!
 """
 
 import argparse
@@ -313,6 +332,97 @@ def test_vault_key(session: requests.Session, base_url: str) -> None:
         else:
             print("[+] No response body.")
 
+def create_secret(session: requests.Session, secrets_url: str, content: str, max_accesses: int, expires_in_seconds: int, password: Optional[str] = None) -> Optional[str]:
+    """Test helper: creates a new secret and returns the token.
+    
+    Args:
+        session: requests session with Authorization header set.
+        secrets_url: Base URL for secrets endpoint (e.g., http://localhost:8000/api/v1/secrets)
+        content: The secret message content.
+        max_accesses: Maximum number of times the secret can be accessed.
+        expires_in_seconds: How long until the secret expires.
+        password: Optional password to protect the secret.
+    
+    Returns:
+        The secret token if successful, None otherwise.
+    """
+    payload = {
+        "content": content,
+        "max_accesses": max_accesses,
+        "expires_in_seconds": expires_in_seconds,
+    }
+    if password:
+        payload["password"] = password
+    
+    print(f"\n[*] Creating secret (max {max_accesses} accesses, expires in {expires_in_seconds}s) …")
+    resp = session.post(f"{secrets_url}/", json=payload)
+    print(f"[+] POST {secrets_url}/ -> {resp.status_code}")
+    
+    try:
+        data = resp.json()
+        print("[+] Response:", data)
+        token = data.get("token")
+        return token
+    except Exception:
+        print("[!] No JSON response or failed to create secret")
+        return None
+
+
+def list_secrets(session: requests.Session, secrets_url: str) -> None:
+    """Test helper: lists all secrets created by authenticated user."""
+    print(f"\n[*] Fetching user's secrets …")
+    resp = session.get(f"{secrets_url}/")
+    print(f"[+] GET {secrets_url}/ -> {resp.status_code}")
+    
+    try:
+        secrets_list = resp.json()
+        print(f"[+] Found {len(secrets_list)} secret(s):")
+        for secret in secrets_list:
+            print(f"    ID: {secret['id']}, Token: {secret['token'][:16]}..., "
+                  f"Remaining: {secret['remaining_accesses']}/{secret['max_accesses']}, "
+                  f"Revoked: {secret['is_revoked']}")
+    except Exception as e:
+        print(f"[!] Failed to list secrets: {e}")
+
+
+def access_secret(session: requests.Session, base_url: str, token: str, password: Optional[str] = None) -> Optional[str]:
+    """Test helper: accesses a secret by token (public endpoint, no auth needed).
+    
+    Args:
+        session: requests session (auth not required for this endpoint).
+        base_url: Base URL for secrets endpoint.
+        token: The secret's unique token.
+        password: Optional password if the secret is password-protected.
+    
+    Returns:
+        The secret content if successful, None otherwise.
+    """
+    print(f"[*] Accessing secret with token: {token[:16]}…")
+    params = {}
+    if password:
+        params["password"] = password
+    # Accessing a secret is a GET operation (public link retrieval)
+    resp = session.get(f"{base_url}/access/{token}", params=params)
+    print(f"[+] GET {base_url}/access/{token} -> {resp.status_code}")
+    
+    try:
+        data = resp.json()
+        print(f"[+] Secret content: {data.get('content')}")
+        print(f"[+] Remaining accesses: {data.get('remaining_accesses')}")
+        print(f"[+] Expires at: {data.get('expires_at')}")
+        return data.get("content")
+    except Exception as e:
+        print(f"[!] Failed to access secret: {e}")
+        return None
+
+
+
+def revoke_secret(session: requests.Session, secrets_url: str, secret_id: int) -> None:
+    """Test helper: revokes a secret owned by the user."""
+    print(f"\n[*] Revoking secret id={secret_id} …")
+    resp = session.post(f"{secrets_url}/{secret_id}/revoke")
+    print(f"[+] POST {secrets_url}/{secret_id}/revoke -> {resp.status_code}")
+
 
 def test_refresh_flow(session: requests.Session, base_url: str, email: str, master_password: str) -> None:
     """
@@ -380,7 +490,8 @@ def main():
     parser.add_argument(
         "action",
         choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",  "change-password",
-                 "leaks-email", "leaks-password", "vault-key", "refresh"],
+                 "vault-key", "secret-create", "secret-list", "secret-access", "secret-revoke",
+                 "leaks-email", "leaks-password", "refresh"],
         help="What to do.",
     )
     parser.add_argument(
@@ -423,6 +534,39 @@ def main():
         default=None,
         help="Password to check for leaks (defaults to --password if not provided).",
     )
+    parser.add_argument(
+        "--secret-content",
+        default="This is a test secret message!",
+        help="(For secret-create) The secret content to share.",
+    )
+    parser.add_argument(
+        "--max-access",
+        type=int,
+        default=3,
+        help="(For secret-create) Maximum number of accesses (default: 3).",
+    )
+    parser.add_argument(
+        "--expires",
+        type=int,
+        default=3600,
+        help="(For secret-create) Expiration time in seconds (default: 3600 = 1 hour).",
+    )
+    parser.add_argument(
+        "--token",
+        default=None,
+        help="(For secret-access) The secret token to access.",
+    )
+    parser.add_argument(
+        "--secret-password",
+        default=None,
+        help="(For secret-create/secret-access) Optional password for secret protection/access.",
+    )
+    parser.add_argument(
+        "--secret-id",
+        type=int,
+        default=None,
+        help="(For secret-revoke) The secret ID to revoke.",
+    )
     args = parser.parse_args()
 
     base_url = args.base_url.rstrip("/")
@@ -430,12 +574,14 @@ def main():
     login_url = f"{base_url}/auth/login"
     change_url = f"{base_url}/auth/change-password"
     vault_items_url = f"{base_url}/vault/items"
+    secrets_url = f"{base_url}/secrets"
 
     print(f"[*] Using base URL: {base_url}")
     print(f"    Register URL: {register_url}")
     print(f"    Login URL   : {login_url}")
     print(f"    Change URL  : {change_url}")
     print(f"    Vault URL   : {vault_items_url}")
+    print(f"    Secrets URL : {secrets_url}")
 
     session = requests.Session()
 
@@ -512,6 +658,28 @@ def main():
                 print("[+] No JSON response")
         else:
             test_vault(session, base_url, do_post=do_post, do_get=do_get)
+    elif args.action in ("secret-create", "secret-list", "secret-access", "secret-status", "secret-revoke"):
+        if args.action != "secret-access" and args.action != "secret-status":
+            # These require authentication
+            token = login(session, login_url, args.email, args.password)
+            if not token:
+                print("[!] No access token obtained; cannot run secret operations.")
+                return
+        
+        if args.action == "secret-create":
+            create_secret(session, secrets_url, args.secret_content, args.max_access, args.expires, args.secret_password)
+        elif args.action == "secret-list":
+            list_secrets(session, secrets_url)
+        elif args.action == "secret-access":
+            if not args.token:
+                print("[!] --token is required for secret-access")
+                return
+            access_secret(session, secrets_url, args.token, args.secret_password)
+        elif args.action == "secret-revoke":
+            if args.secret_id is None:
+                print("[!] --secret-id is required for secret-revoke")
+                return
+            revoke_secret(session, secrets_url, args.secret_id)
     elif args.action == "change-password":
         token = login(session, login_url, args.email, args.password)
         if not token:
@@ -545,6 +713,7 @@ def main():
         test_vault_key(session, base_url)
     elif args.action == "refresh":
         test_refresh_flow(session=session, base_url=base_url, email=args.email, master_password=args.password)
+
 
 
 if __name__ == "__main__":

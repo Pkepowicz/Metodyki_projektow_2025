@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, func
 from sqlalchemy.orm import relationship
+from datetime import datetime
 from .base import Base
 
 
@@ -16,6 +17,8 @@ class User(Base):
     # Relationship to vault items owned by this user
     vault_items = relationship("VaultItem", back_populates="owner", cascade="all, delete-orphan")
     refresh_tokens = relationship('RefreshToken', back_populates='user', cascade='all, delete-orphan')
+    # Relationship to secrets created by this user
+    secrets = relationship("Secret", back_populates="owner", cascade="all, delete-orphan")
 
 
 class VaultItem(Base):
@@ -42,3 +45,21 @@ class RefreshToken(Base):
     revoked = Column(Boolean, default=False, nullable=False)
 
     user = relationship('User', back_populates='refresh_tokens')
+    
+    
+class Secret(Base):
+    """ORM model representing a shared secret (text message) accessible via unique token"""
+    __tablename__ = "secrets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String, unique=True, index=True, nullable=False)  # Unique shareable link token
+    content = Column(Text, nullable=False)  # The actual secret text message
+    max_accesses = Column(Integer, nullable=False)  # Maximum number of times it can be accessed
+    remaining_accesses = Column(Integer, nullable=False)  # How many accesses are left
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)  # When the secret expires
+    is_revoked = Column(bool, default=False, nullable=False)  # False = active, True = revoked
+    password_hash = Column(String, nullable=True)  # Optional password hash for accessing the secret
+
+    owner = relationship("User", back_populates="secrets")

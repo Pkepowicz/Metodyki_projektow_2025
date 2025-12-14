@@ -29,17 +29,12 @@ export default function SecretsScreen() {
     }
     setGettingLink(true);
 
-    // TODO: mock, delete later
-    const MOCK = true;
-    if (MOCK) {
-      setLink("https://secretlink.com/te$T");
-      setGettingLink(false);
-      return;
-    }
-
-    const response = await post("/secrets", {
-      message: message,
+    const response = await post("secrets", {
+      content: message,
+      max_accesses: 1,
+      expires_in_seconds: 600
     });
+
     if (!response.ok) {
       const error = await response.json();
       setErrorMessage("Error: " + error.detail);
@@ -47,8 +42,10 @@ export default function SecretsScreen() {
       return;
     }
     const data = await response.json();
+    const secrets_token = await data.token;
+    const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`
 
-    setLink(data.link);
+    setLink(link);
     setGettingLink(false);
   }
 
