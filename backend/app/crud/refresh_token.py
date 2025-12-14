@@ -35,7 +35,7 @@ def get_valid_refresh_token(db: Session, raw_token: str) -> models.RefreshToken 
         return None
 
     now = datetime.now(timezone.utc)
-    if token.expires_at <= now:
+    if token.expires_at <= now or token.revoked:
         try:
             crud_refresh_token.delete_refresh_token(db, token)
             db.commit()
