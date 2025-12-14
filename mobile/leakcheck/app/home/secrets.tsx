@@ -43,7 +43,7 @@ export default function SecretsScreen() {
     }
     const data = await response.json();
     const secrets_token = await data.token;
-    const link = `https://leakchecker.mwalas.pl/secrets/${secrets_token}`
+    const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`
 
     setLink(link);
     setGettingLink(false);
