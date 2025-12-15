@@ -42,3 +42,38 @@ export async function get(apiRoute: string): Promise<Response> {
     },
   });
 }
+
+
+/**
+ * PUT request with auth token
+ * @param apiRoute
+ * @param body 
+ * @returns 
+ */
+export async function put(apiRoute: string, body: any): Promise<Response> {
+  const token = await getToken();
+  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * DELETE request with auth token
+ * @param apiRoute 
+ * @returns 
+ */
+export async function del(apiRoute: string): Promise<Response> {
+  const token = await getToken();
+  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

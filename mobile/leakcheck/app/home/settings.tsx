@@ -133,7 +133,7 @@ export default function SettingsScreen() {
       <Text style={settingsStyle.title}>Settings ⚙️</Text>
 
       <TouchableOpacity
-        style={homeStyles.addButton}
+        style={[settingsStyle.logoutButton, { backgroundColor: "#2563EB" }]}
         onPress={() => setModalVisible(true)}
       >
         <Text style={homeStyles.addButtonText}>Change password</Text>
