@@ -5,16 +5,19 @@ import { get_key_value, set_key_value } from "./storage";
 
 export async function encryptVaultPassword(
   password: string,
-  vault_key_str: string | null = null
+  vault_key_str: string | null = null,
+  iv_str: string | null = null
 ): Promise<string> {
   if (!vault_key_str) {
     vault_key_str = await getVaultKey();
   }
   if (!vault_key_str) throw Error("Vault key not set");
-  const vault_key = CryptoJS.enc.Hex.parse(vault_key_str);
-
-  const iv_str = await get_key_value("iv");
+  if (!iv_str) {
+    iv_str = await get_key_value("iv");
+  }
   if (!iv_str) throw Error("IV not set");
+
+  const vault_key = CryptoJS.enc.Hex.parse(vault_key_str);
   const iv = CryptoJS.enc.Hex.parse(iv_str);
 
   return CryptoJS.AES.encrypt(password, vault_key, { iv: iv }).toString();
@@ -22,19 +25,24 @@ export async function encryptVaultPassword(
 
 export async function decryptVaultPassword(
   encrypted_password: string,
-  vault_key_str: string | null = null
+  vault_key_str: string | null = null,
+  iv_str: string | null = null
 ): Promise<string> {
   if (!vault_key_str) {
     vault_key_str = await getVaultKey();
   }
-  if (!vault_key_str) {
-    throw Error("Error: Vault key not set");
+  if (!vault_key_str) throw Error("Vault key not set");
+  if (!iv_str) {
+    iv_str = await get_key_value("iv");
   }
-  const vault_key = CryptoJS.enc.Hex.parse(vault_key_str);
-
-  const iv_str = await get_key_value("iv");
   if (!iv_str) throw Error("IV not set");
+
+  const vault_key = CryptoJS.enc.Hex.parse(vault_key_str);
+  console.log('Vault key:')
+  console.log(vault_key);
   const iv = CryptoJS.enc.Hex.parse(iv_str);
+  console.log('IV:')
+  console.log(iv);
 
   const bytes = CryptoJS.AES.decrypt(encrypted_password, vault_key, { iv: iv });
   return bytes.toString(CryptoJS.enc.Utf8);

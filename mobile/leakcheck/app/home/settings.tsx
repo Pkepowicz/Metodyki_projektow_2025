@@ -11,6 +11,7 @@ import {
   stretchedMasterKey,
 } from "@/utils/encryption";
 import { get, post } from "@/utils/requests";
+import { get_key_value, set_key_value } from "@/utils/storage";
 import CryptoJS from "crypto-js";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
       // const old_stretched_master_key = stretchedMasterKey(old_master_key);
       const old_auth_hash = getAuthHash(old_master_key, oldPassword);
       const old_symmetric_key = await getVaultKey();
+      const old_iv = await get_key_value("iv");
       if (!old_symmetric_key) logout(router);
 
       // New
@@ -66,6 +68,8 @@ export default function SettingsScreen() {
         { iv: encrypted_vault_key_iv }
       ).toString();
 
+      await set_key_value("iv", encrypted_vault_key_iv.toString(CryptoJS.enc.Hex));
+
       // Decrypt all messages and send encrypted new ones
       const response_items = await get("vault/items");
       if (!response_items.ok) {
@@ -80,11 +84,13 @@ export default function SettingsScreen() {
         const old_encrypted_password = old_item.encrypted_password;
         const old_password = await decryptVaultPassword(
           old_encrypted_password,
-          old_symmetric_key
+          old_symmetric_key,
+          old_iv
         );
         const new_encrypted_password: string = await encryptVaultPassword(
           old_password,
-          symmetric_key.toString(CryptoJS.enc.Hex) // new symmetric key
+          symmetric_key.toString(CryptoJS.enc.Hex), // new symmetric key
+          CryptoJS.lib.WordArray.create(iv_bytes).toString()
         );
         const new_item = {
           site: old_item.site,
