@@ -177,7 +177,8 @@ export function AddPasswordModal({
         });
 
         if (!response.ok) {
-          setErrorMessage("Error:" + response.text());
+          const error = await response.json();
+          setErrorMessage(`Error ${response.status}: ${error.detail}`);
         } else {
           // Close modal + reset form
           setNewSite("");

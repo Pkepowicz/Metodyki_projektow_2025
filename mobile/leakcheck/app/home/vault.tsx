@@ -61,7 +61,8 @@ export default function VaultScreen() {
           logout(router);
           return;
         }
-        throw new Error(`Server returned ${response.status}`);
+        const error = await response.json()
+        throw new Error(`Server returned error ${response.status}: ${error.detail}`);
       }
 
       const items: VaultItem[] = await response.json();
@@ -117,7 +118,8 @@ async function saveEdit(oldItem: VaultItem, newUser: string, newPassword: string
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to update item: ${response.status}`);
+      const error = await response.json()
+      throw new Error(`Error ${response.status}: ${error.detail}`);
     }
 
     setEditItem(null);
@@ -133,7 +135,8 @@ async function confirmDelete(item: VaultItem) {
     const response = await del(`vault/items/${item.id}`);
 
     if (!response.ok) {
-      throw new Error(`Failed to delete item: ${response.status}`);
+      const error = await response.json();
+      throw new Error(`Error ${response.status}: ${error.detail}`);
     }
 
     setDeleteItem(null);

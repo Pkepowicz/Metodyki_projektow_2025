@@ -38,22 +38,19 @@ export default function SettingsScreen() {
 
   // password change
   async function changePassword() {
-    setSubmitting(true);
+    if (newPassword != confirmPassword) {
+      setErrorMessage("Passwords don't match");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       // Old
       const old_master_key = calculateMasterKey(email, oldPassword);
       // const old_stretched_master_key = stretchedMasterKey(old_master_key);
       const old_auth_hash = getAuthHash(old_master_key, oldPassword);
       const old_symmetric_key = await getVaultKey();
       if (!old_symmetric_key) logout(router);
-
-      // const response_vault_key = await get("auth/vault-key");
-      // if (!response_vault_key.ok) {
-      //   throw Error("Invalid credentials");
-      // }
-      // const vault_key_data = await response_vault_key.json();
-      // const old_encrypted_vault_key = vault_key_data.protected_vault_key;
-      // const old_encrypted_vault_key_iv = vault_key_data.protected_vault_key_iv;
 
       // New
       const master_key = calculateMasterKey(email, newPassword);
@@ -72,7 +69,8 @@ export default function SettingsScreen() {
       // Decrypt all messages and send encrypted new ones
       const response_items = await get("vault/items");
       if (!response_items.ok) {
-        throw new Error(`Error ${response_items.status} fetching vault items`);
+        const error = await response_items.json();
+        throw new Error(`Error ${response_items.status} fetching vault items: ${error.detail}`);
       }
       const items: [RetrievedVaultItem] = await response_items.json();
       var new_items: RetrievedVaultItem[] = [];
@@ -115,16 +113,15 @@ export default function SettingsScreen() {
       }
 
       setVaultKey(symmetric_key.toString(CryptoJS.enc.Hex));
+      setErrorMessage("Successfully changed password");
+      setSubmitting(false);
     } catch (error) {
       let errorMessage = "As always: skill issue";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       setErrorMessage(errorMessage);
-    } finally {
       setSubmitting(false);
-      setModalVisible(false);
-      setErrorMessage("");
     }
   }
 
