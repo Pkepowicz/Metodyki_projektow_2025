@@ -1,5 +1,8 @@
 import { getToken } from "./auth";
 
+
+const API_BASE = "/api/v1";
+
 /**
  * Usage: const response = await post(route, body)
  * @param apiRoute string e.g. "auth/login"
@@ -13,7 +16,7 @@ export async function post(
   withToken: boolean = true
 ): Promise<Response> {
   const token = await getToken();
-  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+  return fetch(`${API_BASE}/${apiRoute}`, {
     method: "POST",
     headers: withToken
       ? {
@@ -34,7 +37,7 @@ export async function post(
  */
 export async function get(apiRoute: string): Promise<Response> {
   const token = await getToken();
-  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+  return fetch(`${API_BASE}/${apiRoute}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -42,7 +45,6 @@ export async function get(apiRoute: string): Promise<Response> {
     },
   });
 }
-
 
 /**
  * PUT request with auth token
@@ -52,7 +54,7 @@ export async function get(apiRoute: string): Promise<Response> {
  */
 export async function put(apiRoute: string, body: any): Promise<Response> {
   const token = await getToken();
-  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+  return fetch(`${API_BASE}/${apiRoute}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -69,7 +71,7 @@ export async function put(apiRoute: string, body: any): Promise<Response> {
  */
 export async function del(apiRoute: string): Promise<Response> {
   const token = await getToken();
-  return fetch("https://leakchecker.mwalas.pl/api/v1/" + apiRoute, {
+  return fetch(`${API_BASE}/${apiRoute}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

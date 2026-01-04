@@ -10,11 +10,26 @@ from app.db.init_db import init_db_with_fake_user
 models.Base.metadata.create_all(bind=engine)
 init_db_with_fake_user()
 
-app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f'{settings.API_V1_STR}/openapi.json')
+app = FastAPI(
+        title=settings.PROJECT_NAME, 
+        docs_url="/api/docs",
+        openapi_url=f'{settings.API_V1_STR}/openapi.json',
+        redoc_url=None
+      )
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"],)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost",
+        "http://localhost:8080",
+        "http://localhost:8081",
+        "https://leakchecker.mwalas.pl",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-app.include_router(public_router, prefix="/secrets", tags=["secrets"])
+app.include_router(public_router, prefix="/api/secrets", tags=["secrets-public"])
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

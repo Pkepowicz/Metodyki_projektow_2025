@@ -29,7 +29,7 @@ export default function SecretsScreen() {
     }
     setGettingLink(true);
 
-    const response = await post("secrets", {
+    const response = await post("secrets/", {
       content: message,
       max_accesses: 1,
       expires_in_seconds: 600
@@ -43,7 +43,7 @@ export default function SecretsScreen() {
     }
     const data = await response.json();
     const secrets_token = await data.token;
-    const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`
+    const link = `${window.location.origin}/secrets/${secrets_token}`;
 
     setLink(link);
     setGettingLink(false);
