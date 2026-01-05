@@ -1,7 +1,9 @@
 import { getToken } from "./auth";
 
-
-const API_BASE = "/api/v1";
+// PROD version
+// const API_BASE = "/api/v1";
+// DEV version
+const API_BASE = "https://leakchecker.mwalas.pl/api/v1";
 
 /**
  * Usage: const response = await post(route, body)
