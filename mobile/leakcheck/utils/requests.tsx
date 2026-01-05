@@ -1,7 +1,9 @@
 import { getToken, refreshTokens, isTokenExpired } from "./auth";
 
-
-const API_BASE = "/api/v1";
+// PROD version
+// const API_BASE = "/api/v1";
+// DEV version
+const API_BASE = "https://leakchecker.mwalas.pl/api/v1";
 
 async function ensureValidToken(): Promise<void> {
   const token = await getToken();
