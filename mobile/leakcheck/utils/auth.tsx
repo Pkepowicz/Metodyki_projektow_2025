@@ -66,13 +66,13 @@ export function isTokenExpired(token: string): boolean {
 
 export async function refreshTokens(): Promise<void> {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken || isTokenExpired(refreshToken)) {
-    throw new Error("Refresh token expired or invalid. Try relogging");
+  if (!refreshToken) {
+    throw new Error("Refresh token not available. Try relogging");
   }
 
   const response = await post("auth/refresh", { refresh_token: refreshToken }, false);
   if (!response.ok) {
-    throw new Error("Failed to refresh tokens");
+    throw new Error("Failed to refresh tokens. Try relogging");
   }
 
   const data = await response.json();

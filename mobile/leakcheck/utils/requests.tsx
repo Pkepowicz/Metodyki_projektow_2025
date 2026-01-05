@@ -23,7 +23,9 @@ export async function post(
   body: object,
   withToken: boolean = true
 ): Promise<Response> {
-  await ensureValidToken();
+  if (withToken) {
+    await ensureValidToken();
+  }
   const token = await getToken();
 
   return fetch(`${API_BASE}/${apiRoute}`, {
