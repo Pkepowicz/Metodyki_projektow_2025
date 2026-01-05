@@ -20,6 +20,7 @@ export function getAuthHash(
 
 export async function logout(router: Router): Promise<void> {
   await remove_key("token");
+  // send request to /logout (not implemented yet)
   router.replace("/");
 }
 
@@ -66,7 +67,7 @@ export function isTokenExpired(token: string): boolean {
 export async function refreshTokens(): Promise<void> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken || isTokenExpired(refreshToken)) {
-    throw new Error("Refresh token expired or invalid");
+    throw new Error("Refresh token expired or invalid. Try relogging");
   }
 
   const response = await post("auth/refresh", { refresh_token: refreshToken }, false);
