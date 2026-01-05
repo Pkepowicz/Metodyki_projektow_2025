@@ -36,6 +36,49 @@ export function isEmailValid(email: string): boolean {
   return emailRegex.test(email);
 }
 
+export async function getRefreshToken(): Promise<string | null> {
+  return await get_key_value('refresh_token');
+}
+
+export async function setRefreshToken(token: string): Promise<void> {
+  set_key_value("refresh_token", token);
+}
+
+function parseJwt(token: string): any {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+export function isTokenExpired(token: string): boolean {
+  try {
+    const payload = parseJwt(token);
+    const currentTime = Math.floor(Date.now() / 1000);
+    return payload.exp < currentTime;
+  } catch {
+    return true; // if error, treat as expired
+  }
+}
+
+export async function refreshTokens(): Promise<void> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken || isTokenExpired(refreshToken)) {
+    throw new Error("Refresh token expired or invalid");
+  }
+
+  const response = await post("auth/refresh", { refresh_token: refreshToken }, false);
+  if (!response.ok) {
+    throw new Error("Failed to refresh tokens");
+  }
+
+  const data = await response.json();
+  await setToken(data.access_token);
+  await setRefreshToken(data.refresh_token);
+}
+
 /**
  * Saves token and redirects to /home/vault
  * @param email
@@ -70,7 +113,9 @@ export async function login(
 
     const data = await response.json();
     const token = data.access_token;
-    set_key_value("token", token);
+    const refreshToken = data.refresh_token;
+    await set_key_value("token", token);
+    await setRefreshToken(refreshToken);
 
     // Get vault key
     const response_vault_key = await get("auth/vault-key");

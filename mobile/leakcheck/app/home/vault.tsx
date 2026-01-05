@@ -57,10 +57,6 @@ export default function VaultScreen() {
       const response = await get("vault/items");
 
       if (!response.ok) {
-        if (response.status == 401) {
-          logout(router);
-          return;
-        }
         throw new Error(`Server returned ${response.status}`);
       }
 
