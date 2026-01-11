@@ -159,7 +159,10 @@ export default function SecretsScreen() {
                 onChangeText={(text) =>
                   setExpirationMinutes(text.replace(/[^0-9]/g, ""))
                 }
-                style={[leakStyles.input, { width: "30%" }]}
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "2%" },
+                ]}
                 placeholder="Minutes"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
@@ -169,7 +172,10 @@ export default function SecretsScreen() {
                 onChangeText={(text) =>
                   setExpirationHours(text.replace(/[^0-9]/g, ""))
                 }
-                style={[leakStyles.input, { width: "30%" }]}
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "1%" },
+                ]}
                 placeholder="Hours"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
@@ -179,7 +185,10 @@ export default function SecretsScreen() {
                 onChangeText={(text) =>
                   setExpirationDays(text.replace(/[^0-9]/g, ""))
                 }
-                style={[leakStyles.input, { width: "30%" }]}
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "2%" },
+                ]}
                 placeholder="Days"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
