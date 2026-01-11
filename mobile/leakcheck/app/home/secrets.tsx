@@ -38,18 +38,22 @@ export default function SecretsScreen() {
     setGettingLink(true);
 
     try {
-      const expirationSeconds: number = calculateSeconds(expirationMinutes, expirationHours, expirationDays);
+      const expirationSeconds: number = calculateSeconds(
+        expirationMinutes,
+        expirationHours,
+        expirationDays
+      );
 
       let messagePasswordHash: string = "";
       if (messagePassword) {
-        messagePasswordHash = bytesToHex(sha256(utf8ToBytes(messagePassword)))
+        messagePasswordHash = bytesToHex(sha256(utf8ToBytes(messagePassword)));
       }
 
-      const response = await post("secrets", {
+      const response = await post("secrets/", {
         content: message,
         max_accesses: Number(maxAccesses),
         expires_in_seconds: expirationSeconds,
-        password: messagePasswordHash
+        password: messagePasswordHash,
       });
 
       if (!response.ok) {
@@ -60,11 +64,11 @@ export default function SecretsScreen() {
       }
       const data = await response.json();
       const secrets_token = await data.token;
-      const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`
+      const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`;
+      // const link = `${window.location.origin}/secrets/${secrets_token}`;
 
       setLink(link);
       setGettingLink(false);
-
     } catch (e) {
       let errorMessage = "Invalid number";
       if (e instanceof Error) {
@@ -111,7 +115,7 @@ export default function SecretsScreen() {
         )}
 
         {link == "" ? (
-          <View style={{justifyContent: "center"}}>
+          <View style={{ justifyContent: "center" }}>
             <TextInput
               value={message}
               onChangeText={setMessage}
@@ -125,38 +129,57 @@ export default function SecretsScreen() {
               textAlignVertical="top"
             />
 
-            <Text style={{textAlign: "center"}}>How many times can the secret be accessed?</Text>
+            <Text style={{ textAlign: "center" }}>
+              How many times can the secret be accessed?
+            </Text>
             <TextInput
               value={maxAccesses}
-              onChangeText={text => setMaxAccesses(text.replace(/[^0-9]/g, ""))}
-              style={[leakStyles.input, {width: "30%", marginHorizontal: "auto", marginBottom: 30}]}
+              onChangeText={(text) =>
+                setMaxAccesses(text.replace(/[^0-9]/g, ""))
+              }
+              style={[
+                leakStyles.input,
+                { width: "30%", marginHorizontal: "auto", marginBottom: 30 },
+              ]}
               placeholder="Allowed accesses"
               placeholderTextColor="#6B7280"
               keyboardType="numeric"
             />
 
-            <Text style={{textAlign: "center"}}>Expiration time:</Text>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 30 }}>
+            <Text style={{ textAlign: "center" }}>Expiration time:</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 30,
+              }}
+            >
               <TextInput
                 value={expirationMinutes}
-                onChangeText={text => setExpirationMinutes(text.replace(/[^0-9]/g, ""))}
-                style={[leakStyles.input, {width: "30%"}]}
+                onChangeText={(text) =>
+                  setExpirationMinutes(text.replace(/[^0-9]/g, ""))
+                }
+                style={[leakStyles.input, { width: "30%" }]}
                 placeholder="Minutes"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
               />
               <TextInput
                 value={expirationHours}
-                onChangeText={text => setExpirationHours(text.replace(/[^0-9]/g, ""))}
-                style={[leakStyles.input, {width: "30%"}]}
+                onChangeText={(text) =>
+                  setExpirationHours(text.replace(/[^0-9]/g, ""))
+                }
+                style={[leakStyles.input, { width: "30%" }]}
                 placeholder="Hours"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
               />
               <TextInput
                 value={expirationDays}
-                onChangeText={text => setExpirationDays(text.replace(/[^0-9]/g, ""))}
-                style={[leakStyles.input, {width: "30%"}]}
+                onChangeText={(text) =>
+                  setExpirationDays(text.replace(/[^0-9]/g, ""))
+                }
+                style={[leakStyles.input, { width: "30%" }]}
                 placeholder="Days"
                 placeholderTextColor="#6B7280"
                 keyboardType="numeric"
@@ -168,7 +191,7 @@ export default function SecretsScreen() {
               onChangeText={setMessagePassword}
               placeholder="Secret's password [optional]"
               placeholderTextColor="#6B7280"
-              style={[leakStyles.input, {marginBottom: 40}]}
+              style={[leakStyles.input, { marginBottom: 40 }]}
               secureTextEntry
               textAlignVertical="top"
             />

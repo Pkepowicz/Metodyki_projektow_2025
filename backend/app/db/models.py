@@ -59,7 +59,7 @@ class Secret(Base):
     remaining_accesses = Column(Integer, nullable=False)  # How many accesses are left
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)  # When the secret expires
-    is_revoked = Column(bool, default=False, nullable=False)  # False = active, True = revoked
+    is_revoked = Column(Boolean, default=False, nullable=False)  # False = active, True = revoked
     password_hash = Column(String, nullable=True)  # Optional password hash for accessing the secret
 
     owner = relationship("User", back_populates="secrets")

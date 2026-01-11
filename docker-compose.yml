@@ -1,10 +1,24 @@
 services:
+  nginx:
+    build: ./nginx
+    container_name: ${COMPOSE_PROJECT_NAME}-nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_started
+      mobile:
+        condition: service_started
+    networks:
+      - main_net
+    restart: unless-stopped
+
   backend:
     build: ./backend
     container_name: ${COMPOSE_PROJECT_NAME}-backend
     env_file: .env
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./backend/app:/app/app
     command: >
@@ -25,6 +39,12 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     image: postgres:15-alpine
@@ -43,20 +63,16 @@ services:
   mobile:
     build: ./mobile
     container_name: ${COMPOSE_PROJECT_NAME}-mobile
-    ports:
-      - "8081:8081"
-      - "19000:19000"
-      - "19001:19001"
+    expose:
+      - "8081"
     volumes:
       - ./mobile/leakcheck:/app
       - /app/node_modules
-      - ~/.expo:/root/.expo
     networks:
       - main_net
     environment:
-      - EXPO_TUNNEL_SUBDOMAIN=${COMPOSE_PROJECT_NAME}-mobile
-      - EXPO_DEBUG=true
       - NODE_OPTIONS=--max-old-space-size=4096
+    restart: unless-stopped
     deploy:
       resources:
         limits:
