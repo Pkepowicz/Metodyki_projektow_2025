@@ -19,6 +19,11 @@ def create_refresh_token(db: Session, user: models.User, raw_token: str) -> mode
     db.refresh(db_token)
     return db_token
 
+def get_refresh_token(db: Session, raw_token: str):
+    """ Retrieve a refresh token by its raw value."""
+    token_hash = hash_refresh_token(raw_token)
+    return db.query(models.RefreshToken).filter(models.RefreshToken.token_hash == token_hash).first()
+
 
 def get_valid_refresh_token(db: Session, raw_token: str) -> models.RefreshToken | None:
     """
