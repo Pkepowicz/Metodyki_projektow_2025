@@ -11,6 +11,7 @@ import {
   stretchedMasterKey,
 } from "@/utils/encryption";
 import { get, post } from "@/utils/requests";
+import { get_key_value, set_key_value } from "@/utils/storage";
 import CryptoJS from "crypto-js";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
@@ -38,22 +39,20 @@ export default function SettingsScreen() {
 
   // password change
   async function changePassword() {
-    setSubmitting(true);
+    if (newPassword != confirmPassword) {
+      setErrorMessage("Passwords don't match");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       // Old
       const old_master_key = calculateMasterKey(email, oldPassword);
       // const old_stretched_master_key = stretchedMasterKey(old_master_key);
       const old_auth_hash = getAuthHash(old_master_key, oldPassword);
       const old_symmetric_key = await getVaultKey();
+      const old_iv = await get_key_value("iv");
       if (!old_symmetric_key) logout(router);
-
-      // const response_vault_key = await get("auth/vault-key");
-      // if (!response_vault_key.ok) {
-      //   throw Error("Invalid credentials");
-      // }
-      // const vault_key_data = await response_vault_key.json();
-      // const old_encrypted_vault_key = vault_key_data.protected_vault_key;
-      // const old_encrypted_vault_key_iv = vault_key_data.protected_vault_key_iv;
 
       // New
       const master_key = calculateMasterKey(email, newPassword);
@@ -69,10 +68,13 @@ export default function SettingsScreen() {
         { iv: encrypted_vault_key_iv }
       ).toString();
 
+      await set_key_value("iv", encrypted_vault_key_iv.toString(CryptoJS.enc.Hex));
+
       // Decrypt all messages and send encrypted new ones
       const response_items = await get("vault/items");
       if (!response_items.ok) {
-        throw new Error(`Error ${response_items.status} fetching vault items`);
+        const error = await response_items.json();
+        throw new Error(`Error ${response_items.status} fetching vault items: ${error.detail}`);
       }
       const items: [RetrievedVaultItem] = await response_items.json();
       var new_items: RetrievedVaultItem[] = [];
@@ -82,11 +84,13 @@ export default function SettingsScreen() {
         const old_encrypted_password = old_item.encrypted_password;
         const old_password = await decryptVaultPassword(
           old_encrypted_password,
-          old_symmetric_key
+          old_symmetric_key,
+          old_iv
         );
         const new_encrypted_password: string = await encryptVaultPassword(
           old_password,
-          symmetric_key.toString(CryptoJS.enc.Hex) // new symmetric key
+          symmetric_key.toString(CryptoJS.enc.Hex), // new symmetric key
+          CryptoJS.lib.WordArray.create(iv_bytes).toString()
         );
         const new_item = {
           site: old_item.site,
@@ -115,16 +119,15 @@ export default function SettingsScreen() {
       }
 
       setVaultKey(symmetric_key.toString(CryptoJS.enc.Hex));
+      setErrorMessage("Successfully changed password");
+      setSubmitting(false);
     } catch (error) {
       let errorMessage = "As always: skill issue";
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       setErrorMessage(errorMessage);
-    } finally {
       setSubmitting(false);
-      setModalVisible(false);
-      setErrorMessage("");
     }
   }
 

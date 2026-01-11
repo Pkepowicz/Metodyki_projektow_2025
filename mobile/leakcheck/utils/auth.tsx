@@ -109,7 +109,10 @@ export async function login(
 
     if (!response.ok) {
       const error = await response.json();
-      throw Error(error.detail || "Invalid credentials");
+      if (response.status == 401) {
+        throw Error('Invalid Credentials');
+      }
+      throw Error('Error ' + response.status + ': ' + error.detail);
     }
 
     const data = await response.json();
@@ -122,12 +125,13 @@ export async function login(
     const response_vault_key = await get("auth/vault-key");
     if (!response_vault_key.ok) {
       const error = await response_vault_key.json();
-      throw Error("Error " + response_vault_key.status + " " + error.detail);
+      throw Error("Error " + response_vault_key.status + ": " + error.detail);
     }
     const data_vault_key = await response_vault_key.json();
     var encrypted_vault_key = data_vault_key.protected_vault_key;
     var encrypted_vault_key_iv = data_vault_key.protected_vault_key_iv;
-    set_key_value("iv", encrypted_vault_key_iv);
+    const vault_key_iv = CryptoJS.enc.Hex.parse(encrypted_vault_key_iv);
+    set_key_value("iv", vault_key_iv.toString());
 
     // Decrypt and set vault key
     const stretched_master_key = stretchedMasterKey(master_key);

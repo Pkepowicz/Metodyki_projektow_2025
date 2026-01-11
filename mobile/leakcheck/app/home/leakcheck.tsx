@@ -61,7 +61,8 @@ export default function LeakCheckScreen() {
     });
 
       if (!response.ok) {
-        throw new Error("Failed to add credentials");
+        const error = await response.json();
+        throw new Error(`Error ${response.status}: ${error.detail}. Failed to add credentials`);
       }
 
       setEmail("");
@@ -89,7 +90,8 @@ export default function LeakCheckScreen() {
       const response = await post("leaks/email/check", { email: email.trim() });
 
       if (!response.ok) {
-        throw new Error("Failed to check email");
+        const error = await response.json();
+        throw new Error(`Error ${response.status}: ${error.detail}. Failed to check email`);
       }
 
       const result: boolean = await response.json();
@@ -118,7 +120,8 @@ export default function LeakCheckScreen() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to check password");
+        const error = await response.json();
+        throw new Error(`Error ${response.status}: ${error.detail}. Failed to check password`);
       }
 
       const result: boolean = await response.json();

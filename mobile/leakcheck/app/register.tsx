@@ -62,7 +62,7 @@ export default function RegisterScreen() {
 
       if (!response.ok) {
         const err = await response.json();
-        setErrorMessage(err.detail.toString());
+        setErrorMessage(`Error ${response.status}: ${err.detail}. Account not created`);
         return;
       }
 

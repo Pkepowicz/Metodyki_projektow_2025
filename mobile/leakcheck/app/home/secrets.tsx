@@ -1,8 +1,11 @@
 import { homeStyles } from "@/styles/home";
 import { leakStyles } from "@/styles/leakchecker";
+import { calculateSeconds } from "@/utils/etc";
 import { post } from "@/utils/requests";
 import { copyToClipboard } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { utf8ToBytes, bytesToHex } from "@noble/hashes/utils.js";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,7 +22,12 @@ export default function SecretsScreen() {
   const [link, setLink] = useState<string>("");
   const [gettingLink, setGettingLink] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [maxAccesses, setMaxAccesses] = useState<string>("1");
+  const [expirationMinutes, setExpirationMinutes] = useState<string>("10");
+  const [expirationHours, setExpirationHours] = useState<string>("");
+  const [expirationDays, setExpirationDays] = useState<string>("");
+  const [messagePassword, setMessagePassword] = useState<string>("");
 
   async function getSecretLink() {
     setErrorMessage("");
@@ -29,24 +37,45 @@ export default function SecretsScreen() {
     }
     setGettingLink(true);
 
-    const response = await post("secrets/", {
-      content: message,
-      max_accesses: 1,
-      expires_in_seconds: 600
-    });
+    try {
+      const expirationSeconds: number = calculateSeconds(
+        expirationMinutes,
+        expirationHours,
+        expirationDays
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      setErrorMessage("Error: " + error.detail);
+      let messagePasswordHash: string = "";
+      if (messagePassword) {
+        messagePasswordHash = bytesToHex(sha256(utf8ToBytes(messagePassword)));
+      }
+
+      const response = await post("secrets/", {
+        content: message,
+        max_accesses: Number(maxAccesses),
+        expires_in_seconds: expirationSeconds,
+        password: messagePasswordHash,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setErrorMessage(`Error ${response.status}: ${error.detail}`);
+        setGettingLink(false);
+        return;
+      }
+      const data = await response.json();
+      const secrets_token = await data.token;
+      const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`;
+      // const link = `${window.location.origin}/secrets/${secrets_token}`;
+
+      setLink(link);
       setGettingLink(false);
-      return;
+    } catch (e) {
+      let errorMessage = "Invalid number";
+      if (e instanceof Error) {
+        errorMessage = e.message;
+      }
+      setErrorMessage(errorMessage);
     }
-    const data = await response.json();
-    const secrets_token = await data.token;
-    const link = `${window.location.origin}/secrets/${secrets_token}`;
-
-    setLink(link);
-    setGettingLink(false);
   }
 
   const scale = useRef(new Animated.Value(1)).current;
@@ -86,7 +115,7 @@ export default function SecretsScreen() {
         )}
 
         {link == "" ? (
-          <View>
+          <View style={{ justifyContent: "center" }}>
             <TextInput
               value={message}
               onChangeText={setMessage}
@@ -97,6 +126,82 @@ export default function SecretsScreen() {
                 { height: 100, paddingVertical: 10, marginBottom: 30 },
               ]}
               multiline
+              textAlignVertical="top"
+            />
+
+            <Text style={{ textAlign: "center" }}>
+              How many times can the secret be accessed?
+            </Text>
+            <TextInput
+              value={maxAccesses}
+              onChangeText={(text) =>
+                setMaxAccesses(text.replace(/[^0-9]/g, ""))
+              }
+              style={[
+                leakStyles.input,
+                { width: "30%", marginHorizontal: "auto", marginBottom: 30 },
+              ]}
+              placeholder="Allowed accesses"
+              placeholderTextColor="#6B7280"
+              keyboardType="numeric"
+            />
+
+            <Text style={{ textAlign: "center" }}>Expiration time:</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 30,
+              }}
+            >
+              <TextInput
+                value={expirationMinutes}
+                onChangeText={(text) =>
+                  setExpirationMinutes(text.replace(/[^0-9]/g, ""))
+                }
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "2%" },
+                ]}
+                placeholder="Minutes"
+                placeholderTextColor="#6B7280"
+                keyboardType="numeric"
+              />
+              <TextInput
+                value={expirationHours}
+                onChangeText={(text) =>
+                  setExpirationHours(text.replace(/[^0-9]/g, ""))
+                }
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "1%" },
+                ]}
+                placeholder="Hours"
+                placeholderTextColor="#6B7280"
+                keyboardType="numeric"
+              />
+              <TextInput
+                value={expirationDays}
+                onChangeText={(text) =>
+                  setExpirationDays(text.replace(/[^0-9]/g, ""))
+                }
+                style={[
+                  leakStyles.input,
+                  { width: "30%", marginHorizontal: "2%" },
+                ]}
+                placeholder="Days"
+                placeholderTextColor="#6B7280"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <TextInput
+              value={messagePassword}
+              onChangeText={setMessagePassword}
+              placeholder="Secret's password [optional]"
+              placeholderTextColor="#6B7280"
+              style={[leakStyles.input, { marginBottom: 40 }]}
+              secureTextEntry
               textAlignVertical="top"
             />
 
