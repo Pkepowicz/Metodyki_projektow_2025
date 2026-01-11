@@ -1,9 +1,17 @@
-import { getToken } from "./auth";
+import { getToken, refreshTokens, isTokenExpired } from "./auth";
 
 // PROD version
 // const API_BASE = "/api/v1";
 // DEV version
 const API_BASE = "https://leakchecker.mwalas.pl/api/v1";
+
+async function ensureValidToken(): Promise<void> {
+  const token = await getToken();
+
+  if (token && isTokenExpired(token)) {
+    await refreshTokens();
+  }
+}
 
 /**
  * Usage: const response = await post(route, body)
@@ -17,7 +25,11 @@ export async function post(
   body: object,
   withToken: boolean = true
 ): Promise<Response> {
+  if (withToken) {
+    await ensureValidToken();
+  }
   const token = await getToken();
+
   return fetch(`${API_BASE}/${apiRoute}`, {
     method: "POST",
     headers: withToken
@@ -38,7 +50,9 @@ export async function post(
  * @returns
  */
 export async function get(apiRoute: string): Promise<Response> {
+  await ensureValidToken();
   const token = await getToken();
+
   return fetch(`${API_BASE}/${apiRoute}`, {
     method: "GET",
     headers: {
@@ -55,7 +69,9 @@ export async function get(apiRoute: string): Promise<Response> {
  * @returns 
  */
 export async function put(apiRoute: string, body: any): Promise<Response> {
+  await ensureValidToken();
   const token = await getToken();
+
   return fetch(`${API_BASE}/${apiRoute}`, {
     method: "PUT",
     headers: {
@@ -72,7 +88,9 @@ export async function put(apiRoute: string, body: any): Promise<Response> {
  * @returns 
  */
 export async function del(apiRoute: string): Promise<Response> {
+  await ensureValidToken();
   const token = await getToken();
+
   return fetch(`${API_BASE}/${apiRoute}`, {
     method: "DELETE",
     headers: {
