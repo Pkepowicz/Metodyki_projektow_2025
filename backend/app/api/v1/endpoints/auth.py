@@ -101,6 +101,22 @@ def refresh_tokens(payload: RefreshRequest, db: Session = Depends(get_db)) -> To
 
     return Token(access_token=new_access_token, token_type='bearer',  refresh_token=new_raw_refresh_token)
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(payload: RefreshRequest, db: Session = Depends(get_db)) -> Response:
+    """
+    Logout by deleting the refresh token record (even if the token is expired).
+    Returns 204 even if token is missing/invalid/expired.
+    """
+    try:
+        token_record = crud_refresh_token.get_refresh_token(db, payload.refresh_token)
+        if token_record is not None:
+            crud_refresh_token.delete_refresh_token(db, token_record)
+            db.commit()
+    except Exception as exc:
+        db.rollback()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password_and_rotate(payload: ChangePasswordAndRotatePayload, db: Session = Depends(get_db),

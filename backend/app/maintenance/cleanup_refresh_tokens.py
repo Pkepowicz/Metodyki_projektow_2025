@@ -11,14 +11,17 @@ from app.crud import refresh_token as crud_refresh_token
 
 
 def main() -> None:
-    with get_db() as db:
-        try:
-            deleted = crud_refresh_token.delete_expired_refresh_tokens(db)
-            db.commit()
-            print(f'Deleted {deleted} expired refresh tokens.')
-        except Exception as exc:
-            db.rollback()
-            print(f'Error while deleting expired refresh tokens: {exc}')
+    db_gen = get_db()
+    db = next(db_gen)
+    try:
+        deleted = crud_refresh_token.delete_expired_refresh_tokens(db)
+        db.commit()
+        print(f'Deleted {deleted} expired refresh tokens.')
+    except Exception as exc:
+        db.rollback()
+        print(f'Error while deleting expired refresh tokens: {exc}')
+    finally:
+        db_gen.close()
 
 
 if __name__ == '__main__':
