@@ -61,8 +61,10 @@ export default function VaultScreen() {
           logout(router);
           return;
         }
-        const error = await response.json()
-        throw new Error(`Server returned error ${response.status}: ${error.detail}`);
+        const error = await response.json();
+        throw new Error(
+          `Server returned error ${response.status}: ${error.detail}`
+        );
       }
 
       const items: VaultItem[] = await response.json();
@@ -106,45 +108,46 @@ export default function VaultScreen() {
     );
   }
 
+  async function saveEdit(
+    oldItem: VaultItem,
+    newUser: string,
+    newPassword: string
+  ) {
+    try {
+      const encryptedPassword = await encryptVaultPassword(newPassword);
 
-async function saveEdit(oldItem: VaultItem, newUser: string, newPassword: string) {
-  try {
+      const response = await put(`vault/items/${oldItem.id}`, {
+        site: newUser,
+        encrypted_password: encryptedPassword,
+      });
 
-    const encryptedPassword = await encryptVaultPassword(newPassword);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Error ${response.status}: ${error.detail}`);
+      }
 
-    const response = await put(`vault/items/${oldItem.id}`, {
-      site: newUser, 
-      encrypted_password: encryptedPassword,
-    });
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`Error ${response.status}: ${error.detail}`);
+      setEditItem(null);
+      await loadItems();
+    } catch (err: any) {
+      alert("Error updating item: " + err.message);
     }
-
-    setEditItem(null);
-    await loadItems(); 
-  } catch (err: any) {
-    alert("Error updating item: " + err.message);
   }
-}
 
-async function confirmDelete(item: VaultItem) {
-  try {
+  async function confirmDelete(item: VaultItem) {
+    try {
+      const response = await del(`vault/items/${item.id}`);
 
-    const response = await del(`vault/items/${item.id}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Error ${response.status}: ${error.detail}`);
+      }
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`Error ${response.status}: ${error.detail}`);
+      setDeleteItem(null);
+      await loadItems();
+    } catch (err: any) {
+      alert("Error deleting item: " + err.message);
     }
-
-    setDeleteItem(null);
-    await loadItems();
-  } catch (err: any) {
-    alert("Error deleting item: " + err.message);
   }
-}
 
   return (
     <View style={homeStyles.container}>
