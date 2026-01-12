@@ -4,6 +4,7 @@ Simple test client for FastAPI backend.
 Supports:
     - user registration
     - user login
+    - user logout
     - vault operations (POST/GET/PUT/DELETE)
     - password change with vault rotation
     - email leak check
@@ -17,6 +18,7 @@ Usage examples:
     python test.py register
     python test.py login
     python test.py both
+    python test.py logout
     python test.py change-password --new-password "NewPass123!"
     
     # Vault operations
@@ -129,7 +131,8 @@ def register(session: requests.Session, register_url: str, email: str, master_pa
             print("[+] No response body.")
 
 
-def login(session: requests.Session, login_url: str, email: str, master_password: str) -> tuple[Optional[str], Optional[str]]:
+def login(session: requests.Session, login_url: str, email: str, master_password: str) -> (
+        tuple)[Optional[str], Optional[str]]:
     """
     Log in a user, set the Authorization header on the session, and return both the access and refresh tokens.
 
@@ -137,11 +140,7 @@ def login(session: requests.Session, login_url: str, email: str, master_password
         (access_token, refresh_token), each possibly None if not present.
     """
     auth_hash = derive_auth_hash(master_password)
-
-    payload = {
-        "email": email,
-        "auth_hash": auth_hash,
-    }
+    payload = {"email": email, "auth_hash": auth_hash}
 
     print(f"\n[*] Logging in user {email} …")
     resp = session.post(login_url, json=payload)
@@ -332,7 +331,9 @@ def test_vault_key(session: requests.Session, base_url: str) -> None:
         else:
             print("[+] No response body.")
 
-def create_secret(session: requests.Session, secrets_url: str, content: str, max_accesses: int, expires_in_seconds: int, password: Optional[str] = None) -> Optional[str]:
+
+def create_secret(session: requests.Session, secrets_url: str, content: str, max_accesses: int, expires_in_seconds: int,
+                  password: Optional[str] = None) -> Optional[str]:
     """Test helper: creates a new secret and returns the token.
     
     Args:
@@ -416,7 +417,6 @@ def access_secret(session: requests.Session, base_url: str, token: str, password
         return None
 
 
-
 def revoke_secret(session: requests.Session, secrets_url: str, secret_id: int) -> None:
     """Test helper: revokes a secret owned by the user."""
     print(f"\n[*] Revoking secret id={secret_id} …")
@@ -424,7 +424,8 @@ def revoke_secret(session: requests.Session, secrets_url: str, secret_id: int) -
     print(f"[+] POST {secrets_url}/{secret_id}/revoke -> {resp.status_code}")
 
 
-def test_refresh_flow(session: requests.Session, base_url: str, email: str, master_password: str) -> None:
+def test_refresh_flow(session: requests.Session, login_url: str, refresh_url: str, vault_items_url: str, email: str,
+                      master_password: str) -> None:
     """
     Test of the refresh token flow.
 
@@ -435,12 +436,7 @@ def test_refresh_flow(session: requests.Session, base_url: str, email: str, mast
         4. Update Authorization header with the new access token.
         5. Call the protected endpoint again.
     """
-    login_url = f"{base_url}/auth/login"
-    refresh_url = f"{base_url}/auth/refresh"
-    vault_items_url = f"{base_url}/vault/items"
-
     access_token, refresh_token = login(session, login_url, email, master_password)
-
     if not access_token or not refresh_token:
         print("[!] Could not obtain both access and refresh tokens; aborting refresh test.")
         return
@@ -484,14 +480,53 @@ def test_refresh_flow(session: requests.Session, base_url: str, email: str, mast
     except Exception:
         print("[+] Raw response text:", resp.text)
 
+def test_logout_flow(session: requests.Session, login_url: str, refresh_url: str, logout_url: str, email: str,
+                     master_password: str) -> None:
+    """
+    Test of the logout functionality.
+
+    STEPS:
+        1. Login (get refresh token)
+        2. Logout (should return 204)
+        3. Refresh with the old refresh token (should fail - 401)
+    """
+    access_token, refresh_token = login(session, login_url, email, master_password)
+    if not refresh_token:
+        print("[!] No refresh token obtained; cannot test logout.")
+        return
+
+    print("\n[*] Logout (expected: 204)")
+    resp = session.post(logout_url, json={"refresh_token": refresh_token})
+    print(f"[+] POST {logout_url} -> {resp.status_code}")
+
+    if resp.status_code != 204:
+        body = resp.text.strip()
+        raise AssertionError(f"Logout failed: expected 204, got {resp.status_code}. Body: {body}")
+
+    print("[+] PASS: logout returned 204")
+
+    print("\n[*] Refresh AFTER logout (expected: 401)")
+    resp = session.post(refresh_url, json={"refresh_token": refresh_token})
+    print(f"[+] POST {refresh_url} -> {resp.status_code}")
+
+    if resp.status_code != 401:
+        body = resp.text.strip()
+        try:
+            body = str(resp.json())
+        except Exception:
+            pass
+        raise AssertionError(f"Refresh after logout failed: expected 401, got {resp.status_code}. Body: {body}")
+
+    print("[+] PASS: refresh after logout returned 401")
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action",
-        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",  "change-password",
-                 "vault-key", "secret-create", "secret-list", "secret-access", "secret-revoke",
-                 "leaks-email", "leaks-password", "refresh"],
+        choices=["register", "login", "both", "vault-post", "vault-get", "vault-both", "vault-put", "vault-delete",
+                 "change-password", "vault-key", "secret-create", "secret-list", "secret-access", "secret-revoke",
+                 "leaks-email", "leaks-password", "refresh", "logout"],
         help="What to do.",
     )
     parser.add_argument(
@@ -572,6 +607,8 @@ def main():
     base_url = args.base_url.rstrip("/")
     register_url = f"{base_url}/auth/register"
     login_url = f"{base_url}/auth/login"
+    logout_url = f"{base_url}/auth/logout"
+    refresh_url = f"{base_url}/auth/refresh"
     change_url = f"{base_url}/auth/change-password"
     vault_items_url = f"{base_url}/vault/items"
     secrets_url = f"{base_url}/secrets"
@@ -579,6 +616,8 @@ def main():
     print(f"[*] Using base URL: {base_url}")
     print(f"    Register URL: {register_url}")
     print(f"    Login URL   : {login_url}")
+    print(f"    Refresh URL   : {refresh_url}")
+    print(f"    Logout URL   : {logout_url}")
     print(f"    Change URL  : {change_url}")
     print(f"    Vault URL   : {vault_items_url}")
     print(f"    Secrets URL : {secrets_url}")
@@ -592,6 +631,9 @@ def main():
             login(session, login_url, args.email, args.password)
     elif args.action in ("login",):
         login(session, login_url, args.email, args.password)
+    elif args.action == "logout":
+        test_logout_flow(session=session, login_url=login_url, refresh_url=refresh_url, logout_url=logout_url,
+                         email=args.email, master_password=args.password)
     elif args.action in ("vault-post", "vault-get", "vault-both", "vault-delete", "vault-put"):
         token = login(session, login_url, args.email, args.password)
         if not token:
@@ -712,8 +754,8 @@ def main():
 
         test_vault_key(session, base_url)
     elif args.action == "refresh":
-        test_refresh_flow(session=session, base_url=base_url, email=args.email, master_password=args.password)
-
+        test_refresh_flow(session=session, login_url=login_url, refresh_url=refresh_url, vault_items_url=vault_items_url,
+                          email=args.email, master_password=args.password)
 
 
 if __name__ == "__main__":

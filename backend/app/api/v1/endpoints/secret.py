@@ -240,7 +240,7 @@ def access_secret_by_token(
                         <div class="metadata-value">{expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
                     </div>
                 </div>
-                {f'<div class="warning">⚠️ This secret will expire soon. Make note of the content above.</div>' if remaining == 1 else ''}
+                {f'<div class="warning">⚠️ This secret will expire soon. Make note of the content above.</div>' if remaining <= 1 else ''}
             </div>
         </body>
     </html>
