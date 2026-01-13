@@ -7,18 +7,21 @@ from app.api.v1.endpoints.secret import public_router
 from app.db import models
 from app.db.base import engine
 from app.db.init_db import init_db_with_fake_user
+from pathlib import Path
 
 models.Base.metadata.create_all(bind=engine)
 init_db_with_fake_user()
+
+APP_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
         title=settings.PROJECT_NAME, 
         docs_url="/api/docs",
         openapi_url=f'{settings.API_V1_STR}/openapi.json',
         redoc_url=None
-      )
+        )
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
 app.add_middleware(
     CORSMiddleware,
