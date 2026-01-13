@@ -159,6 +159,19 @@ def verify_secret_password(secret: models.Secret, password: str) -> bool:
     """
     if secret.password_hash is None:
         return True
-
+      
     incoming_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
     return secrets.compare_digest(incoming_hash, secret.password_hash)
+
+def delete_expired_secrets(db: Session) -> int:
+    """
+    Delete all secrets that have passed their expiry time or have been revoked.
+
+    Returns:
+        int: number of deleted rows.
+    """
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    result = (
+        db.query(models.Secret).filter(models.Secret.expires_at <= now).delete(synchronize_session=False))
+    return result

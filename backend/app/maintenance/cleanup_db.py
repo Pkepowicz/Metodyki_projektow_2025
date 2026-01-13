@@ -8,15 +8,18 @@ commits the transaction, and logs how many rows were removed.
 
 from app.db.base import SessionLocal, get_db
 from app.crud import refresh_token as crud_refresh_token
+from app.crud import secret as crud_secret
 
 
 def main() -> None:
     db_gen = get_db()
     db = next(db_gen)
     try:
-        deleted = crud_refresh_token.delete_expired_refresh_tokens(db)
+        deleted_tokens = crud_refresh_token.delete_expired_refresh_tokens(db)
+        deleted_secrets = crud_secret.delete_expired_secrets(db)
         db.commit()
-        print(f'Deleted {deleted} expired refresh tokens.')
+        print(f'Deleted {deleted_tokens} expired refresh tokens.')
+        print(f'Deleted {deleted_secrets} expired secrets.')
     except Exception as exc:
         db.rollback()
         print(f'Error while deleting expired refresh tokens: {exc}')
