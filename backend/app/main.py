@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.api.v1.endpoints.secret import public_router
@@ -16,6 +17,8 @@ app = FastAPI(
         openapi_url=f'{settings.API_V1_STR}/openapi.json',
         redoc_url=None
       )
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
