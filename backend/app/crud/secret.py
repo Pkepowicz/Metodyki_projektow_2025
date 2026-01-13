@@ -1,9 +1,9 @@
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.db import models
 from app.schemas.secret import SecretCreate
-from app.core.security import get_password_hash, verify_password
 
 
 def generate_unique_token(length: int = 32) -> str:
@@ -31,7 +31,6 @@ def create_secret(db: Session, owner_id: int, secret: SecretCreate) -> models.Se
     """
     token = generate_unique_token()
     expires_at = datetime.utcnow() + timedelta(seconds=secret.expires_in_seconds)
-    password_hash = get_password_hash(secret.password) if secret.password else None
     
     db_secret = models.Secret(
         owner_id=owner_id,
@@ -41,7 +40,7 @@ def create_secret(db: Session, owner_id: int, secret: SecretCreate) -> models.Se
         remaining_accesses=secret.max_accesses,
         expires_at=expires_at,
         is_revoked=False,
-        password_hash=password_hash
+        password_hash=secret.password
     )
     db.add(db_secret)
     db.commit()
@@ -160,8 +159,9 @@ def verify_secret_password(secret: models.Secret, password: str) -> bool:
     """
     if secret.password_hash is None:
         return True
-    return verify_password(password, secret.password_hash)
-
+      
+    incoming_hash = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return secrets.compare_digest(incoming_hash, secret.password_hash)
 
 def delete_expired_secrets(db: Session) -> int:
     """

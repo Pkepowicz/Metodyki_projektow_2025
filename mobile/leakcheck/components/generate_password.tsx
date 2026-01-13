@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   Text,
@@ -7,35 +7,92 @@ import {
   View,
 } from "react-native";
 import Slider from "@react-native-community/slider";
+import "react-native-get-random-values";
 import { ComStyles } from "@/styles/components";
 
 
-function generateRandomPassword(length: number) {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+function generateSecurePassword(length: number) {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const symbols = "!@#$%^&*()_+";
+
+  const all = upper + lower + digits + symbols;
+
+  if (length < 12) {
+    throw new Error("Password length must be at least 12");
   }
-  return result;
+
+  const passwordChars: string[] = [];
+
+  passwordChars.push(upper[secureRandomInt(upper.length)]);
+  passwordChars.push(lower[secureRandomInt(lower.length)]);
+  passwordChars.push(digits[secureRandomInt(digits.length)]);
+  passwordChars.push(symbols[secureRandomInt(symbols.length)]);
+
+  for (let i = passwordChars.length; i < length; i++) {
+    passwordChars.push(all[secureRandomInt(all.length)]);
+  }
+
+  for (let i = passwordChars.length - 1; i > 0; i--) {
+    const j = secureRandomInt(i + 1);
+    [passwordChars[i], passwordChars[j]] = [
+      passwordChars[j],
+      passwordChars[i],
+    ];
+  }
+
+  return passwordChars.join("");
 }
 
-function generatePassphrase(wordsCount: number) {
-  const words = [
-    "apple", "banana", "cat", "dog", "elephant", "flower",
-    "grape", "house", "ice", "jungle", "kite", "lion",
-    "moon", "night", "orange", "pumpkin",
-  ];
-  let result: string[] = [];
-  for (let i = 0; i < wordsCount; i++) {
-    result.push(words[Math.floor(Math.random() * words.length)]);
-  }
-  return result.join("-");
+function secureRandomInt(max: number) {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % max;
 }
+
+function generatePassphrase(wordsCount: number, separator: string) {
+  const WORDS = [
+  "absorb","academy","account","acoustic","adapt","aerial","agent","alchemy","anchor","angle",
+  "archive","arrow","aspect","asset","atomic","balance","battery","binary","bishop","blanket",
+  "border","branch","bridge","buffer","cannon","carbon","castle","census","channel","cipher",
+  "cluster","column","command","compass","concept","console","crystal","current","cursor","cycle",
+  "damage","delta","density","device","digital","domain","dragon","dynamic","ember","engine",
+  "entity","epoch","escape","factor","falcon","feature","filter","forest","format","galaxy",
+  "gateway","genesis","gradient","gravity","hammer","harbor","horizon","impact","index","inertia",
+  "infinite","insight","isolate","kernel","kingdom","ladder","laser","legend","library","logic",
+  "machine","matrix","memory","method","module","moment","motion","nebula","network","object",
+  "offset","oracle","orbit","origin","packet","parallel","pattern","payload","phantom","planet",
+  "pointer","polygon","quantum","random","reactor","record","region","remote","render","resource",
+  "river","rocket","sandbox","satellite","schema","signal","socket","spectrum","system","tensor",
+  "thread","token","torrent","tracker","transit","trigger","tunnel","unicorn","vector","velocity",
+  "version","virtual","vision","voyage","window","zenith","zero","zone"
+];
+
+  const result: string[] = [];
+
+  for (let i = 0; i < wordsCount; i++) {
+    let word = WORDS[secureRandomInt(WORDS.length)];
+
+    if (secureRandomInt(2) === 1) {
+      word = word[0].toUpperCase() + word.slice(1);
+    }
+
+    if (secureRandomInt(4) === 1) {
+      word += secureRandomInt(100).toString();
+    }
+
+    result.push(word);
+  }
+
+  return result.join(separator);
+}
+
 
 function getPasswordStrength(password: string) {
   let score = 0;
 
+  if (password.length >= 8) score += 1;  
   if (password.length >= 12) score += 1;
   if (password.length >= 16) score += 1;
 
@@ -52,10 +109,11 @@ function getPasswordStrength(password: string) {
   ];
   if (commonPatterns.some((regex) => regex.test(password))) score -= 1;
 
-  score = Math.max(0, Math.min(8, score));
+  score = Math.max(0, score);
+  score = Math.min(10, score); 
 
   if (score <= 2) return { label: "Weak", color: "#FF0000", width: 25 };
-  if (score <= 4) return { label: "Medium", color: "#FF8C00", width: 50 };
+  if (score <= 5) return { label: "Medium", color: "#FF8C00", width: 50 };
   if (score <= 6) return { label: "Strong", color: "#008000", width: 75 };
   return { label: "Very Strong", color: "#9400D3", width: 100 };
 }
@@ -75,18 +133,33 @@ export default function GeneratePasswordModal({
   const [passwordLength, setPasswordLength] = useState(16);
   const [passphraseWords, setPassphraseWords] = useState(4);
   const [isPassphrase, setIsPassphrase] = useState(false);
+  const [separator, setSeparator] = useState("-");
 
   const handleGeneratePassword = () => {
     setIsPassphrase(false);
-    setPassword(generateRandomPassword(passwordLength));
+    setPassword(generateSecurePassword(passwordLength));
   };
 
   const handleGeneratePassphrase = () => {
-    setIsPassphrase(true);
-    setPassword(generatePassphrase(passphraseWords));
-  };
+  setIsPassphrase(true);
+  setPassword(generatePassphrase(passphraseWords, separator));
+};
+
 
   const strength = getPasswordStrength(password);
+
+  useEffect(() => {
+    if (isPassphrase) {
+      const defaultWords = 6; 
+      setPassphraseWords(defaultWords);
+      setPassword(generatePassphrase(defaultWords, separator));
+    } else {
+      const defaultLength = 12;
+      setPasswordLength(defaultLength);
+      setPassword(generateSecurePassword(defaultLength));
+    }
+  }, [isPassphrase]); 
+
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -109,7 +182,29 @@ export default function GeneratePasswordModal({
               }}
             />
           </View>
-
+          {isPassphrase && (
+            <View style={{ flexDirection: "row", marginBottom: 8 }}>
+              {["-", "_", ".", " "].map((sep) => (
+                <TouchableOpacity
+                  key={sep}
+                  style={[
+                    ComStyles.button,
+                    {
+                      paddingHorizontal: 12,
+                      backgroundColor:
+                        separator === sep ? "#a10964ff" : "#ccc",
+                      marginRight: 6,
+                    },
+                  ]}
+                  onPress={() => setSeparator(sep)}
+                >
+                  <Text style={ComStyles.buttonText}>
+                    {sep === " " ? "Space" : sep}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           {!isPassphrase && password.length > 0 && (
             <View style={{ marginBottom: 8 }}>
               <View

@@ -1,8 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
 from datetime import datetime
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.db.base import get_db
@@ -13,16 +16,15 @@ from app.db.models import User
 router = APIRouter()
 public_router = APIRouter()
 
+APP_DIR = Path(__file__).resolve()
+while APP_DIR.name != "app":
+    APP_DIR = APP_DIR.parent
 
-# Public endpoints (no authentication required) for accessing shared secrets
+templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 
 
 @public_router.get("/{token}", response_class=HTMLResponse)
-def access_secret_by_token(
-    token: str,
-    password: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+def access_secret_by_token(token: str, request: Request, db: Session = Depends(get_db)):
     """Access a shared secret using its unique token and optional password.
 
     This endpoint is public (no authentication required). Anyone with the token can access the secret.
@@ -31,223 +33,100 @@ def access_secret_by_token(
 
     Args:
         token: The unique secret token from the shareable link.
-        password: Optional password if the secret is password-protected.
 
     Returns:
         HTML: An HTML page displaying the secret content, remaining accesses, and expiration time.
               If password-protected and no/wrong password provided, returns a password input form.
     """
     db_secret = crud_secret.get_secret_by_token(db=db, token=token)
-    
+
     if not db_secret:
-        return HTMLResponse(
-            content="<html><head><title>Not Found</title></head><body><h1>404 - Secret Not Found</h1><p>This secret does not exist.</p></body></html>",
-            status_code=404
-        )
-    
+        return templates.TemplateResponse("secret.html",
+                                          {"request": request, "state": "not_found", "title": "Not Found"},
+                                          status_code=404)
+
     if datetime.utcnow() > db_secret.expires_at:
-        return HTMLResponse(
-            content="<html><head><title>Expired</title></head><body><h1>410 - Secret Expired</h1><p>This secret has expired and is no longer accessible.</p></body></html>",
-            status_code=410
-        )
-    
+        return templates.TemplateResponse("secret.html", {"request": request, "state": "expired", "title": "Expired"},
+                                          status_code=410)
+
     if db_secret.is_revoked:
-        return HTMLResponse(
-            content="<html><head><title>Revoked</title></head><body><h1>410 - Secret Revoked</h1><p>This secret has been revoked by its owner.</p></body></html>",
-            status_code=410
-        )
-    
+        return templates.TemplateResponse("secret.html", {"request": request, "state": "revoked", "title": "Revoked"},
+                                          status_code=410)
+
     if db_secret.remaining_accesses <= 0:
-        return HTMLResponse(
-            content="<html><head><title>Access Limit Reached</title></head><body><h1>410 - Maximum Access Count Reached</h1><p>This secret has been accessed the maximum number of times.</p></body></html>",
-            status_code=410
-        )
+        return templates.TemplateResponse("secret.html",
+                                          {"request": request, "state": "limit", "title": "Access Limit Reached"},
+                                          status_code=410)
 
-    secret_requires_password = db_secret.password_hash is not None
-    
-    if secret_requires_password:
-        return HTMLResponse(
-            content="""
-            <html>
-                <head>
-                    <title>Password Protected Secret</title>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body {
-                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            min-height: 100vh;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            padding: 20px;
-                        }
-                        .container {
-                            background: white;
-                            border-radius: 12px;
-                            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-                            padding: 40px;
-                            max-width: 450px;
-                            width: 100%;
-                            text-align: center;
-                        }
-                        h1 {
-                            color: #333;
-                            margin-bottom: 10px;
-                            font-size: 28px;
-                        }
-                        .icon {
-                            font-size: 48px;
-                            margin-bottom: 20px;
-                        }
-                        p {
-                            color: #666;
-                            margin-bottom: 20px;
-                            line-height: 1.6;
-                        }
-                        .note {
-                            background: #fff3cd;
-                            border-left: 4px solid #ffc107;
-                            padding: 15px;
-                            margin-top: 20px;
-                            text-align: left;
-                            color: #856404;
-                            border-radius: 4px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="icon">🔒</div>
-                        <h1>Password Protected Secret</h1>
-                        <p>This secret is password protected.</p>
-                        <div class="note">
-                            <strong>Note:</strong> Password-protected secrets are not yet supported for browser access. 
-                            Please use the API endpoint with the <code>format=json</code> parameter to access this secret programmatically.
-                        </div>
-                    </div>
-                </body>
-            </html>
-            """,
-            status_code=403
-        )
+    if db_secret.remaining_accesses <= 0:
+        return templates.TemplateResponse(
+            "secret.html", {"request": request, "state": "limit", "title": "Access Limit Reached"}, status_code=410)
 
-    content = db_secret.content
-    expires_at = db_secret.expires_at
+    if db_secret.password_hash is not None:
+        return templates.TemplateResponse(
+            "secret.html", {"request": request, "state": "password", "title": "Password Required", "error": None},
+            status_code=200)
 
     remaining = crud_secret.access_secret(db=db, secret=db_secret)
-    if remaining < 0:
-        return HTMLResponse(
-            content="<html><head><title>No Longer Accessible</title></head><body><h1>410 - Secret No Longer Accessible</h1><p>This secret cannot be accessed anymore.</p></body></html>",
-            status_code=410
+    return templates.TemplateResponse(
+        "secret.html",
+        {
+            "request": request,
+            "state": "revealed",
+            "title": "Secret Revealed",
+            "content": db_secret.content,
+            "remaining_accesses": remaining,
+            "expires_at_str": db_secret.expires_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        },
+        status_code=200,
+    )
+
+
+@public_router.post("/{token}", response_class=HTMLResponse)
+def access_secret_by_token_post(token: str, request: Request, password: str = Form(...), db: Session = Depends(get_db)):
+    """
+    Verify the password and reveal the secret content via form submission.
+
+    This endpoint handles the POST request from the password input form. It verifies
+    the provided password (a SHA-256 hex string from the frontend) against the stored hash.
+    If successful, it consumes one access and displays the secret.
+
+    Args:
+        token: The unique secret token from the shareable link.
+        password: The password string provided via the HTML form.
+
+    Returns:
+         HTML: An HTML page displaying the secret content if the password is correct.
+               If the password is invalid, returns the password form with an error message.
+               If the secret is expired or gone, returns the corresponding error state.
+        """
+    db_secret = crud_secret.get_secret_by_token(db=db, token=token)
+
+    if not db_secret or datetime.utcnow() > db_secret.expires_at or db_secret.is_revoked or db_secret.remaining_accesses <= 0:
+         return templates.TemplateResponse(
+             "secret.html", {"request": request, "state": "expired", "title": "Expired"}, status_code=410)
+
+    if not crud_secret.verify_secret_password(db_secret, password):
+        return templates.TemplateResponse(
+            "secret.html",
+            {
+                "request": request, "state": "password", "title": "Invalid Password", "error": "Invalid password."
+            },
+            status_code=401
         )
 
-    return HTMLResponse(content=f"""
-    <html>
-        <head>
-            <title>Secret Revealed</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    min-height: 100vh;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    padding: 20px;
-                }}
-                .container {{
-                    background: white;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-                    padding: 40px;
-                    max-width: 600px;
-                    width: 100%;
-                }}
-                h1 {{
-                    color: #333;
-                    margin-bottom: 30px;
-                    font-size: 32px;
-                    text-align: center;
-                }}
-                .success-icon {{
-                    text-align: center;
-                    font-size: 48px;
-                    margin-bottom: 20px;
-                }}
-                .content-box {{
-                    background: #f5f5f5;
-                    border-left: 4px solid #4caf50;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                    word-break: break-word;
-                    white-space: pre-wrap;
-                    font-family: 'Monaco', 'Courier New', monospace;
-                    line-height: 1.6;
-                }}
-                .metadata {{
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 20px;
-                    margin-top: 20px;
-                    padding-top: 20px;
-                    border-top: 1px solid #e0e0e0;
-                }}
-                .metadata-item {{
-                    text-align: center;
-                }}
-                .metadata-label {{
-                    color: #999;
-                    font-size: 12px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 8px;
-                }}
-                .metadata-value {{
-                    color: #333;
-                    font-size: 16px;
-                    font-weight: 600;
-                }}
-                .warning {{
-                    background: #fff3cd;
-                    border-left: 4px solid #ffc107;
-                    padding: 15px;
-                    border-radius: 8px;
-                    margin-top: 20px;
-                    font-size: 14px;
-                    color: #856404;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="success-icon">✅</div>
-                <h1>Secret Content</h1>
-                <div class="content-box">{content}</div>
-                <div class="metadata">
-                    <div class="metadata-item">
-                        <div class="metadata-label">Remaining Accesses</div>
-                        <div class="metadata-value">{remaining}</div>
-                    </div>
-                    <div class="metadata-item">
-                        <div class="metadata-label">Expires At</div>
-                        <div class="metadata-value">{expires_at.strftime('%Y-%m-%d %H:%M:%S UTC')}</div>
-                    </div>
-                </div>
-                {f'<div class="warning">⚠️ This secret will expire soon. Make note of the content above.</div>' if remaining <= 1 else ''}
-            </div>
-        </body>
-    </html>
-    """)
-
-
-# Authenticated endpoints for managing secrets
+    remaining = crud_secret.access_secret(db=db, secret=db_secret)
+    return templates.TemplateResponse(
+        "secret.html",
+        {
+            "request": request,
+            "state": "revealed",
+            "title": "Secret Revealed",
+            "content": db_secret.content,
+            "remaining_accesses": remaining,
+            "expires_at_str": db_secret.expires_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        },
+    )
 
 
 @router.post("/", response_model=SecretResponse, status_code=status.HTTP_201_CREATED)
