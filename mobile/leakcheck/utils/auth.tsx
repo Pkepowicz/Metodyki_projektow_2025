@@ -19,8 +19,15 @@ export function getAuthHash(
 }
 
 export async function logout(router: Router): Promise<void> {
+  const refreshToken = await getRefreshToken();
+
   await remove_key("token");
-  // send request to /logout (not implemented yet)
+  await remove_key("iv");
+  await remove_key("refresh_token");
+  await remove_key("vault_key");
+
+  post("auth/logout", { refresh_token: refreshToken });
+
   router.replace("/");
 }
 
@@ -38,7 +45,7 @@ export function isEmailValid(email: string): boolean {
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  return await get_key_value('refresh_token');
+  return await get_key_value("refresh_token");
 }
 
 export async function setRefreshToken(token: string): Promise<void> {
@@ -46,11 +53,16 @@ export async function setRefreshToken(token: string): Promise<void> {
 }
 
 function parseJwt(token: string): any {
-  const base64Url = token.split('.')[1];
-  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join(''));
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const jsonPayload = decodeURIComponent(
+    atob(base64)
+      .split("")
+      .map(function (c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+      })
+      .join("")
+  );
   return JSON.parse(jsonPayload);
 }
 
@@ -70,7 +82,11 @@ export async function refreshTokens(): Promise<void> {
     throw new Error("Refresh token not available. Try relogging");
   }
 
-  const response = await post("auth/refresh", { refresh_token: refreshToken }, false);
+  const response = await post(
+    "auth/refresh",
+    { refresh_token: refreshToken },
+    false
+  );
   if (!response.ok) {
     throw new Error("Failed to refresh tokens. Try relogging");
   }
@@ -110,9 +126,9 @@ export async function login(
     if (!response.ok) {
       const error = await response.json();
       if (response.status == 401) {
-        throw Error('Invalid Credentials');
+        throw Error("Invalid Credentials");
       }
-      throw Error('Error ' + response.status + ': ' + error.detail);
+      throw Error("Error " + response.status + ": " + error.detail);
     }
 
     const data = await response.json();
