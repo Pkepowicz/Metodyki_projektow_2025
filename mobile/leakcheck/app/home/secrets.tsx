@@ -5,7 +5,7 @@ import { post } from "@/utils/requests";
 import { copyToClipboard } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { utf8ToBytes, bytesToHex } from "@noble/hashes/utils.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -64,8 +64,7 @@ export default function SecretsScreen() {
       }
       const data = await response.json();
       const secrets_token = await data.token;
-      const link = `https://leakchecker.mwalas.pl/api/secrets/${secrets_token}`;
-      // const link = `${window.location.origin}/secrets/${secrets_token}`;
+      const link = `https://leakchecker.mwalas.pl/secrets/${secrets_token}`;
 
       setLink(link);
       setGettingLink(false);
