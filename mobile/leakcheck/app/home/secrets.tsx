@@ -58,7 +58,16 @@ export default function SecretsScreen() {
 
       if (!response.ok) {
         const error = await response.json();
-        setErrorMessage(`Error ${response.status}: ${error.detail}`);
+
+        if (Array.isArray(error.detail)) {
+            const messages = error.detail.map((err: any) =>
+                err.msg.replace('Value error, ', '')
+            );
+            setErrorMessage(messages.join('\n'));
+        } else {
+            setErrorMessage(`Error ${response.status}: ${error.detail}`);
+        }
+
         setGettingLink(false);
         return;
       }

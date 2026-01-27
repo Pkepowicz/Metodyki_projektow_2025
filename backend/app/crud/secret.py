@@ -40,7 +40,7 @@ def create_secret(db: Session, owner_id: int, secret: SecretCreate) -> models.Se
         remaining_accesses=secret.max_accesses,
         expires_at=expires_at,
         is_revoked=False,
-        password_hash=secret.password
+        password_hash=(secret.password.strip() or None) if secret.password else None
     )
     db.add(db_secret)
     db.commit()
